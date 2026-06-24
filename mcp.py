@@ -43,9 +43,12 @@ el.ch1.off()
 
 
 
-'''
+
 scope = SiglentSDS("TCPIP0::10.10.10.90::INSTR")
 
+scope.set
+
+'''
 print(scope.get_id())
 
 scope.set_channel_enable(1, True)

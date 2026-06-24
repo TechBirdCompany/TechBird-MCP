@@ -76,11 +76,11 @@ class ET54:
 
     def __str__(self):
         ret = f"""Model:          {self.idn['model']}
-Serial:         {self.idn['SN']}
-Firmware:       {self.idn['firmware']}
-Hardware:       {self.idn['hardware']}
+                Serial:         {self.idn['SN']}
+                Firmware:       {self.idn['firmware']}
+                Hardware:       {self.idn['hardware']}
 
-"""
+                """
         ret += self.ch1.__str__()
 
         return ret
