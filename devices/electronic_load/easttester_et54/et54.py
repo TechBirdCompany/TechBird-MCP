@@ -1,6 +1,7 @@
 "Electronic load base instrument"
 
 import sys, time, pyvisa
+from loguru import logger
 from .channel import channel
 
 class ET54:
@@ -40,7 +41,9 @@ class ET54:
         self.connection.read_termination = eol_r
         self.connection.write_termination = eol_w
 
-        tmp = self.connection.query("*IDN?").split()
+        cmd = "*IDN?"
+        logger.debug(f"Querying instrument identification -> {cmd}")
+        tmp = self.connection.query(cmd).split()
         self.idn = dict()
         if len(tmp) == 4:
             (
@@ -70,6 +73,40 @@ class ET54:
             self.Channels = [self.ch1, self.ch2]
         else:
             raise RuntimeError(f"Instrument ID '{self.idn['model']}' not supported.")
+    
+    
+    @classmethod
+    def auto_connect(cls, **kwargs):
+        """
+        Automatically find and connect to the first ET54 device (serial only).
+        """
+        rm = pyvisa.ResourceManager()
+        resources = rm.list_resources()
+
+        for rid in resources:
+            if not rid.startswith("ASRL"):
+                continue
+
+            try:
+                inst = rm.open_resource(rid)
+                inst.timeout = kwargs.get("timeout", 500)  # schneller
+
+                response = inst.query("*IDN?")
+                inst.close()
+
+                if isinstance(response, str):
+                    model = response.split()[0]
+
+                    if model.upper().startswith("ET54") or model == "XXXXXX":
+                        logger.success(f"Using device at {rid} → {response}")
+                        return cls(rid, **kwargs)
+
+            except Exception as e:
+                logger.debug(f"Skipping {rid}: {e}")
+
+        raise RuntimeError("No ET54 device found")
+
+
 
     def __del__(self):
         self.connection.close()
@@ -88,7 +125,9 @@ class ET54:
     def write(self, command):
         "Write command to connection and check status"
 
-        ret = self.connection.query(command)
+        cmd = command
+        logger.debug(f"Writing SCPI command to electronic load -> {cmd}")
+        ret = self.connection.query(cmd)
         time.sleep(self.connection.query_delay)
         if ret == "Rexecu success":
             return 0
@@ -113,7 +152,9 @@ class ET54:
             _timeout = self.connection.timeout
             self.connection.timeout = timeout
 
-        self.connection.write(command)
+        cmd = command
+        logger.debug(f"Querying SCPI command from electronic load -> {cmd}")
+        self.connection.write(cmd)
         time.sleep(self.connection.query_delay)
         ret = []
         for i in range(nrows):
@@ -129,19 +170,27 @@ class ET54:
 
     def close(self):
         "close connection to instument"
+        cmd = "CLOSE"
+        logger.debug(f"Closing connection to electronic load -> {cmd}")
         self.connection.close()
 
     def beep(self):
         "Beep"
-        self.write("SYST:BEEP")
+        cmd = "SYST:BEEP"
+        logger.debug(f"Sending beep command -> {cmd}")
+        self.write(cmd)
     
     def reset(self):
         "Reset device to default"
-        self.connection.write("RST")
+        cmd = "RST"
+        logger.debug(f"Resetting electronic load -> {cmd}")
+        self.connection.write(cmd)
 
     def trigger(self):
         "send trigger event"
-        self.connection.write("TRG")
+        cmd = "TRG"
+        logger.debug(f"Sending trigger event -> {cmd}")
+        self.connection.write(cmd)
 
     def unlock(self):
         """unlock the local interface
@@ -149,18 +198,26 @@ class ET54:
         After unlocking, buttons on the device work again.
         Sending a SCPI command will lock the device again.
         """
-        self.write("SYST:LOCA")
+        cmd = "SYST:LOCA"
+        logger.debug(f"Unlocking local interface -> {cmd}")
+        self.write(cmd)
 
     def fan(self):
         "return fan state"
-        return self.query("SELF:FAN?")
+        cmd = "SELF:FAN?"
+        logger.debug(f"Querying fan state -> {cmd}")
+        return self.query(cmd)
 
     def on(self):
         "turn on all inputs"
+        cmd = "ON"
+        logger.debug(f"Turning on all channels -> {cmd}")
         for ch in self.Channels:
             ch.on()
     
     def off(self):
         "turn of all inputs"
+        cmd = "OFF"
+        logger.debug(f"Turning off all channels -> {cmd}")
         for ch in self.Channels:
             ch.off()
