@@ -8,55 +8,52 @@ from loguru import logger
 from xdm1000 import XDM1000
 from devices.scope.siglent_sds2000xplus import SiglentSDS
 from devices.electronic_load.easttester_et54.et54 import ET54
-from utils.utils import calc_scale
+from utils.utils import *
 
 # Existing plotting function (plot only)
 from devices.dmm.owon_xdm1041.owon_xdm_1041 import plot_voltage_data
 
-
-def get_folder(folder=None):
-    project_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..")
-    )
-
-    if folder is None:
-        folder = os.path.join(project_root, "measurements")
-
-    return folder
-
-
-# ============================================
-# RESET
-# ============================================
-
 def reset_devices(scope, eload):
+    '''
+    Reset all devices to a usable state
+    '''
+
+    # Disable all scope channels
     scope.set_channel_enable(1, False)
     scope.set_channel_enable(2, False)
     scope.set_channel_enable(3, False)
     scope.set_channel_enable(4, False)
 
+    # Remove all measurments on scope
     for i in range(1, 6):
         scope.measure_on_off(i, False)
 
+    # Unlock electronic load and turn channel of off
     eload.unlock()
     eload.off()
 
-
-# ============================================
-# DMM MESSUNG (THREAD SAFE)
-# ============================================
-
 def measure_voltage(duration_s):
-    dmm = XDM1000()
+    '''
+    Measure voltage for a given duration
+    '''
 
-    dmm.set_mode("VDC")
-    dmm.set_rate("FAST")
-
+    # Variables
     times = []
     voltages = []
 
+    # Connect to DMM
+    dmm = XDM1000()
+
+    # Set DMM to VDC Mode
+    dmm.set_mode("VDC")
+
+    # Enable fast aquesition
+    dmm.set_rate("FAST")
+
+    # Starttime
     start = time.perf_counter()
 
+    # Loop
     while (time.perf_counter() - start) < duration_s:
         try:
             t = time.perf_counter() - start
@@ -69,8 +66,10 @@ def measure_voltage(duration_s):
             logger.debug(f"DMM error: {e}")
             continue
 
-        time.sleep(0.01)
+        # Sleep for 50 ms
+        time.sleep(0.05)
 
+    # Close connection
     dmm.close()
 
     return times, voltages
@@ -96,11 +95,16 @@ def load_test(label, voltage, current, timebaseDC, timebaseAC, single=False):
     # Scaling vorbereiten
     C_POS = -3
     c_scale = calc_scale(current)
+    logger.info(f"c_scale: {c_scale}")
     c_offset = C_POS * c_scale
+    logger.info(f"c_offset: {c_offset}")
+
 
     V_POS = -2
     v_scale = calc_scale(voltage)
+    logger.info(f"v_scale: {v_scale}")
     v_offset = V_POS * v_scale
+    logger.info(f"v_offset: {v_offset}")
 
     ripple = voltage * 0.07
     r_scale = calc_scale(ripple)
@@ -112,16 +116,11 @@ def load_test(label, voltage, current, timebaseDC, timebaseAC, single=False):
     scope.set_channel_unit(1, "V")
     scope.set_channel_unit(3, "A")
 
-    scope.set_channel_vertical_scale(1, v_scale)
-    scope.set_channel_offset(1, v_offset)
-
     scope.set_channel_vertical_scale(3, c_scale)
     scope.set_channel_offset(3, c_offset)
 
     scope.set_bits("10Bits")
     scope.measure_statistics_on_off(True)
-
-
 
     # Voltage MAX
     scope.measure_on_off(1, True)
@@ -151,6 +150,9 @@ def load_test(label, voltage, current, timebaseDC, timebaseAC, single=False):
         logger.info(f"Running step: {current_label}")
 
         eload.ch1.CC_mode(test_current)
+
+        scope.set_channel_vertical_scale(1, v_scale)
+        scope.set_channel_offset(1, v_offset)       
 
         scope.set_channel_label_text(1, f"{label} @ {current_label}")
         scope.set_channel_label_text(3, f"{label}")

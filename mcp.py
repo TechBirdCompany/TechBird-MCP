@@ -31,7 +31,7 @@ def main():
         current=0.5,
         timebaseDC=0.01,
         timebaseAC=0.001,
-        single=False   # False → IDLE / 50% / 100%
+        single=False
     )
 
     logger.info("=== TEST RUN FINISHED ===")

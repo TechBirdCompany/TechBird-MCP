@@ -1,4 +1,5 @@
 import math
+import os
 
 def round_125(value):
     exponent = math.floor(math.log10(value))
@@ -19,3 +20,13 @@ def round_125(value):
 def calc_scale(value):
     raw = abs(value) / 4
     return round_125(raw)
+
+def get_folder(folder=None):
+    project_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
+
+    if folder is None:
+        folder = os.path.join(project_root, "measurements")
+
+    return folder

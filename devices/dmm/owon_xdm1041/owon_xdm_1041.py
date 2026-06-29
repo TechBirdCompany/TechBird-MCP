@@ -33,7 +33,7 @@ def measure_voltage(duration_s):
             logger.debug(f"DMM error: {e}")
             continue
 
-        time.sleep(0.01)
+        time.sleep(0.1)
 
     dmm.close()
     return times, voltages
@@ -53,7 +53,7 @@ def plot_voltage_data(times, voltages, title, timestamp, folder):
     v_max = max(voltages)
     v_avg = sum(voltages) / len(voltages)
 
-    logger.debug(f"Plot stats → Min: {v_min:.6f}, Max: {v_max:.6f}, Avg: {v_avg:.6f}")
+    logger.debug(f"Plot stats → Min: {v_min:.4f}, Max: {v_max:.4f}, Avg: {v_avg:.4f}")
 
     plt.figure()
 
@@ -68,11 +68,11 @@ def plot_voltage_data(times, voltages, title, timestamp, folder):
     )
 
 
-    plt.axhline(v_min, color="black", linestyle="--", label=f"Min: {v_min:.5f} V")
-    plt.axhline(v_max, color="black", linestyle="--", label=f"Max: {v_max:.5f} V")
+    plt.axhline(v_min, color="black", linestyle="--", label=f"Min: {v_min:.4f} V")
+    plt.axhline(v_max, color="black", linestyle="--", label=f"Max: {v_max:.4f} V")
 
     #  Average
-    plt.axhline(v_avg, color="blue", linestyle="-", label=f"Avg: {v_avg:.5f} V")
+    plt.axhline(v_avg, color="blue", linestyle="-", label=f"Avg: {v_avg:.4f} V")
 
     plt.ticklabel_format(useOffset=False, style='plain', axis='y')
 
