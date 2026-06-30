@@ -6,7 +6,7 @@ import os
 from loguru import logger
 
 from xdm1000 import XDM1000
-from devices.scope.siglent_sds2000xplus import SiglentSDS
+from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import SiglentSDS
 from devices.electronic_load.easttester_et54.et54 import ET54
 from utils.utils import *
 
