@@ -4,7 +4,7 @@ import os
 import time
 from loguru import logger
 
-class SiglentSDS:
+class HMO3000:
     def __init__(self, resource):
         """
         resource examples:
@@ -254,6 +254,7 @@ class SiglentSDS:
 
         logger.info(f"Set trigger mode to {mode}")
         cmd = f"TRIGger:A:MODE {mode}"
+        return self.write(cmd)
 
 
 
