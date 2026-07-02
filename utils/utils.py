@@ -1,8 +1,6 @@
 import math
 import os
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 from loguru import logger
 
 def round_125(value):

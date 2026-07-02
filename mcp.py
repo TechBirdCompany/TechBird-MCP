@@ -1,14 +1,13 @@
-import sys
 from loguru import logger
 
-from config.testcases import load_test
+#from config.testcases import load_test
 
-from dmm800 import DMM800
+from devices.dmm.rigol_dmm800.rigol_dmm800 import DMM800
 
 
 def main():
 
-    resource = "TCPIP0::192.168.1.100::INSTR"
+    resource = "TCPIP0::192.168.1.38::INSTR"
     # oder:
     # resource = "USB0::0xF4EC::0xEE38::XXXXXXXX::INSTR"
 
@@ -19,21 +18,21 @@ def main():
         print("Creating statistics screenshot...")
 
         dmm.measure_with_statistics_and_screenshot(
-            voltage=10,
-            min_samples=100,
-            mode="MEDIUM",
-            folder="screenshots",
-            filename="10V_Reference"
+            voltage=1,
+            min_samples=250,
+            mode="FAST",
+            folder="DMM858",
+            filename="VDD_0V75"
         )
 
         print("Creating voltage plot...")
 
         plot_path = dmm.measure_and_plot_voltage(
-            voltage=10,
-            min_samples=100,
-            mode="MEDIUM",
-            folder="plots",
-            filename="10V_Reference"
+            voltage=1,
+            min_samples=250,
+            mode="FAST",
+            folder="DMM858",
+            filename="VDD_0V75"
         )
 
         print(f"Plot saved: {plot_path}")

@@ -9,11 +9,15 @@ from utils.utils import plot_voltage_data
 # Constants & ENUMS
 # ---------------------------
 
-mode_map = {
-    "FAST": "1000",
-    "MEDIUM": "100",
-    "SLOW": "10"
+ppm_map = {
+    "FAST": 1000e-6,
+    "MEDIUM": 100e-6,
+    "SLOW": 10e-6
 }
+
+# ---------------------------
+# Class
+# ---------------------------
 
 class DMM800:
     def __init__(self, resource):
@@ -25,9 +29,6 @@ class DMM800:
         self.rm = pyvisa.ResourceManager()
         self.inst = self.rm.open_resource(resource)
         self.inst.timeout = 5000
-
-        # SCPI empfohlen: kurze Headers deaktivieren/aktivieren je nach Bedarf
-        self.write("CHDR SHORT")
 
     # ---------------------------
     # Basic Commands
@@ -80,6 +81,29 @@ class DMM800:
     # Data Commands
     # ---------------------------
 
+    def initiate(self):
+        '''
+        Initiate measurments, need to be done before a fetch
+        '''
+
+        cmd = f"INITiate[:IMMediate]"
+        try:
+            logger.info(f"Querying number of data points in measurement buffer")
+            return self.query(cmd)
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
+
+    def read(self):
+        '''
+        Returns and clears all stored data
+        '''
+
+        cmd = f"R?"
+        try:
+            logger.info(f"Querying number of data points in measurement buffer")
+            return self.query(cmd)
+        except:
+            logger.warning(f"Failure with command -> {cmd}")       
 
     def fetch(self):
         '''
@@ -91,14 +115,18 @@ class DMM800:
             response = self.query("FETCh?")
         except:
             logger.warning(f"Failure with command -> FETCh?")
-            response = ""
+            response = "" \
+            
+        print(response)
+            
+        for element in response:
+            print(element)
 
         return [
             float(v)
             for v in response.split(",")
             if v.strip()
         ]
-
 
     def data_points(self):
         '''
@@ -334,15 +362,26 @@ class DMM800:
 
         logger.info(f"Auto-selected range: {range_val}")
 
-        if mode.upper() not in mode_map:
+
+        numeric_range = {
+            "100mV": 0.1,
+            "1V": 1,
+            "10V": 10,
+            "100V": 100,
+            "1000V": 1000
+        }[range_val]
+
+        if mode.upper() not in ppm_map:
             raise ValueError(
                 f"Invalid mode '{mode}'. Use FAST, MEDIUM or SLOW."
             )
+        
+        resolution = numeric_range * ppm_map[mode.upper()]
 
         self.configure_voltage_dc(
             range_val,
             "DEF",
-            mode_map[mode.upper()]
+            f"{resolution:.6E}"
         )
 
         self.calculate_clear()
@@ -379,6 +418,7 @@ class DMM800:
         self.calculate_average_state("OFF")
 
 
+
     def measure_and_plot_voltage(
         self,
         voltage,
@@ -388,32 +428,27 @@ class DMM800:
         filename="DMM",
         timeout_sec=30
     ):
-        """
-        Waits until the internal measurement buffer contains the requested
-        number of samples, fetches all values from the buffer and creates a plot.
-
-        <voltage>      expected voltage value (used to set range)
-        <min_samples>  minimum number of samples in buffer
-        <mode>         FAST | MEDIUM | SLOW
-        <folder>       output folder
-        <filename>     file prefix
-        """
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         range_val = self.get_voltage_range(voltage)
 
-        logger.info(f"Auto-selected range: {range_val}")
+        numeric_range = {
+            "100mV": 0.1,
+            "1V": 1,
+            "10V": 10,
+            "100V": 100,
+            "1000V": 1000
+        }[range_val]
 
-        if mode.upper() not in mode_map:
-            raise ValueError(
-                f"Invalid mode '{mode}'. Use FAST, MEDIUM or SLOW."
-            )
+        resolution = numeric_range * ppm_map[mode.upper()]
+
+        logger.info(f"Auto-selected range: {range_val}")
 
         self.configure_voltage_dc(
             range_val,
             "DEF",
-            mode_map[mode.upper()]
+            f"{resolution:.6E}"
         )
 
         self.calculate_clear()
@@ -422,23 +457,18 @@ class DMM800:
             points = int(self.data_points())
 
             if points > 0:
-                logger.info(
-                    f"Removing {points} old buffer entries"
-                )
+                logger.info(f"Removing {points} old buffer entries")
                 self.data_remove(points)
 
         except Exception as e:
-            logger.warning(
-                f"Failed to clear measurement buffer: {e}"
-            )
+            logger.warning(f"Failed to clear measurement buffer: {e}")
 
         self.calculate_average_state("ON")
 
-        start_time = time.time()
+        logger.info("Starting measurement")
+        self.initiate()
 
-        logger.info(
-            f"Waiting for {min_samples} samples in measurement buffer..."
-        )
+        start_time = time.time()
 
         while True:
 
@@ -463,20 +493,43 @@ class DMM800:
 
             time.sleep(0.1)
 
-        # Alle Werte aus dem Buffer holen
-        voltages = self.fetch()
+        raw = self.read()
 
         self.calculate_average_state("OFF")
 
+        if not raw:
+            logger.warning("No data received from instrument")
+            return None
+
+        if raw.startswith("#"):
+
+            digits = int(raw[1])
+
+            header_len = 2 + digits
+
+            payload_len = int(raw[2:header_len])
+
+            raw = raw[header_len:header_len + payload_len]
+
+        logger.info(f"Received {len(raw)} characters")
+
+        try:
+            voltages = [
+                float(v)
+                for v in raw.split(",")
+                if v.strip()
+            ]
+        except Exception as e:
+            logger.error(f"Failed to parse voltage values: {e}")
+            return None
+
         logger.info(
-            f"Fetched {len(voltages)} values from measurement buffer"
+            f"Parsed {len(voltages)} voltage samples"
         )
 
         if not voltages:
-            logger.warning("No voltage samples received.")
             return None
 
-        # X-Achse = Samplenummer
         samples = list(range(len(voltages)))
 
         return plot_voltage_data(
