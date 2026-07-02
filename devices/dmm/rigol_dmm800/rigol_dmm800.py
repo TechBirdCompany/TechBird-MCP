@@ -422,6 +422,9 @@ class DMM800:
     def measure_and_plot_voltage(
         self,
         voltage,
+        voltage_nom,
+        voltage_min,
+        voltage_max,
         min_samples,
         mode="MEDIUM",
         folder="plots",
@@ -537,5 +540,8 @@ class DMM800:
             voltages=voltages,
             title=f"{filename} Voltage Trend",
             timestamp=timestamp,
-            folder=folder
+            folder=folder,
+            nominal_value=voltage_nom,
+            min_limit=voltage_min,
+            max_limit=voltage_max
         )
