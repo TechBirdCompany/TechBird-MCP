@@ -341,7 +341,7 @@ class DMM800:
     voltage,
     min_samples,
     mode="MEDIUM",
-    folder="screenshots",
+    folder="measurements",
     filename="DMM"
     ):
         """
@@ -421,8 +421,8 @@ class DMM800:
 
     def measure_and_plot_voltage(
         self,
-        voltage,
-        voltage_nom,
+        voltage_range,
+        voltage_norm,
         voltage_min,
         voltage_max,
         min_samples,
@@ -434,7 +434,7 @@ class DMM800:
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        range_val = self.get_voltage_range(voltage)
+        range_val = self.get_voltage_range(voltage_norm)
 
         numeric_range = {
             "100mV": 0.1,
@@ -517,31 +517,32 @@ class DMM800:
         logger.info(f"Received {len(raw)} characters")
 
         try:
-            voltages = [
+            points = [
                 float(v)
                 for v in raw.split(",")
                 if v.strip()
             ]
+
         except Exception as e:
             logger.error(f"Failed to parse voltage values: {e}")
             return None
 
         logger.info(
-            f"Parsed {len(voltages)} voltage samples"
+            f"Parsed {len(points)} voltage samples"
         )
 
-        if not voltages:
+        if not points:
             return None
 
-        samples = list(range(len(voltages)))
+        samples = list(range(len(points)))
 
         return plot_voltage_data(
-            times=samples,
-            voltages=voltages,
+            datapoints_samples=samples,
+            datapoints_voltages=points, 
             title=f"{filename} Voltage Trend",
             timestamp=timestamp,
             folder=folder,
-            nominal_value=voltage_nom,
+            nominal_value=voltage_norm,
             min_limit=voltage_min,
             max_limit=voltage_max
         )

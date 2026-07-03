@@ -1,9 +1,4 @@
-from loguru import logger
-
-#from config.testcases import load_test
-
 from devices.dmm.rigol_dmm800.rigol_dmm800 import DMM800
-
 
 def main():
 

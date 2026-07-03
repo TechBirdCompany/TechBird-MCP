@@ -3,7 +3,13 @@ import os
 import matplotlib.pyplot as plt
 from loguru import logger
 
+
+
 def round_125(value):
+    '''
+    Rounds a value to the nearest "nice" number to adjust for scope settings.
+    '''
+
     exponent = math.floor(math.log10(value))
     base = value / (10 ** exponent)
 
@@ -19,10 +25,18 @@ def round_125(value):
     return nice * (10 ** exponent)
 
 def calc_scale(value):
+    '''
+    Calculates the scale for a given value, rounding it to the nearest "nice" number.
+    '''
+    
     raw = abs(value) / 4
     return round_125(raw)
 
 def get_folder(folder=None):
+    '''
+    Returns the path to the named folder, creating it if it doesn't exist.
+    '''
+    
     project_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
     )
@@ -33,8 +47,8 @@ def get_folder(folder=None):
     return folder
 
 def plot_voltage_data(
-    times,
-    voltages,
+    datapoints_samples,
+    datapoints_voltages,
     title,
     timestamp,
     folder,
@@ -42,22 +56,33 @@ def plot_voltage_data(
     min_limit,
     max_limit
 ):
+    '''
+    Plots the voltage data with the specified parameters and saves the plot to a file.
 
-    if not voltages:
+    <data_samples>      List of time values corresponding to the voltage measurements
+    <data_voltages>     List of voltage measurements
+    <title>             Title of the plot
+    <timestamp>         Timestamp to include in the filename for unification
+    <folder>            Folder to save the plot in
+    <nominal_value>     Nominal voltage value for reference
+    <min_limit>         Minimum specification limit for the voltage
+    <max_limit>         Maximum specification limit for the voltage
+    '''
+
+    if not datapoints_voltages:
         logger.debug("No data to plot!")
         return None
 
-    v_min = min(voltages)
-    v_max = max(voltages)
-    v_avg = sum(voltages) / len(voltages)
+    v_min = min(datapoints_voltages)
+    v_max = max(datapoints_voltages)
+    v_avg = sum(datapoints_voltages) / len(datapoints_voltages)
 
-    min_idx = voltages.index(v_min)
-    max_idx = voltages.index(v_max)
+    min_idx = datapoints_voltages.index(v_min)
+    max_idx = datapoints_voltages.index(v_max)
 
     logger.debug(
         f"Plot stats → Min: {v_min:.4f}, Max: {v_max:.4f}, Avg: {v_avg:.4f}"
     )
-
 
     spec_half_span = (max_limit - min_limit) / 2
 
@@ -66,15 +91,12 @@ def plot_voltage_data(
         abs(v_max - nominal_value)
     )
 
-    # größere der beiden Spannweiten verwenden
     max_span = max(spec_half_span, measurement_span)
 
-    # 50% Luft ober- und unterhalb der Spezifikation
     display_span = max_span * 1.5
 
     y_lower = nominal_value - display_span
     y_upper = nominal_value + display_span
-
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -103,12 +125,12 @@ def plot_voltage_data(
     )
 
     ax.scatter(
-        times,
-        voltages,
+        datapoints_samples,
+        datapoints_voltages,
         color="darkorange",
         marker="x",
         s=20,
-        label=f"Samples ({len(voltages)})",
+        label=f"Samples ({len(datapoints_voltages)})",
         zorder=3
     )
     ax.axhline(
@@ -127,14 +149,12 @@ def plot_voltage_data(
         label=f"Spec Max: {max_limit:.4f} V"
     )
 
-    # Nennwert
     ax.axhline(
         nominal_value,
         color="blue",
         linewidth=2.5,
         label=f"Nominal: {nominal_value:.4f} V"
     )
-
 
     ax.axhline(
         v_avg,
@@ -145,7 +165,7 @@ def plot_voltage_data(
     )
 
     ax.scatter(
-        times[min_idx],
+        datapoints_samples[min_idx],
         v_min,
         color="black",
         marker="v",
@@ -155,7 +175,7 @@ def plot_voltage_data(
     )
 
     ax.scatter(
-        times[max_idx],
+        datapoints_samples[max_idx],
         v_max,
         color="black",
         marker="^",
@@ -167,7 +187,7 @@ def plot_voltage_data(
     # Werte beschriften
     ax.annotate(
         f"{v_min:.4f} V",
-        (times[min_idx], v_min),
+        (datapoints_samples[min_idx], v_min),
         xytext=(0, -20),
         textcoords="offset points",
         ha="center"
@@ -175,7 +195,7 @@ def plot_voltage_data(
 
     ax.annotate(
         f"{v_max:.4f} V",
-        (times[max_idx], v_max),
+        (datapoints_samples[max_idx], v_max),
         xytext=(0, 10),
         textcoords="offset points",
         ha="center"
@@ -189,7 +209,7 @@ def plot_voltage_data(
         axis="y"
     )
 
-    ax.set_xlabel("Time (s)")
+    ax.set_xlabel("Samples")
     ax.set_ylabel("Voltage (V)")
     ax.set_title(title)
 
@@ -202,7 +222,7 @@ def plot_voltage_data(
     filename = f"{timestamp}_{safe_title}_DMM.png"
     path = os.path.join(folder, filename)
 
-    logger.debug(f"Saving plot to: {path}")
+    logger.info(f"Saving plot to: {path}")
 
     plt.savefig(path, dpi=150)
     plt.close()
