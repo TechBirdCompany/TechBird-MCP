@@ -1,53 +1,57 @@
+"""Test configuration and measurement scenarios."""
+
 import time
 import datetime
 import threading
 import os
+from typing import Optional
 
 from loguru import logger
 
 from xdm1000 import XDM1000
 from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import SiglentSDS
-from devices.electronic_load.easttester_et54.et54 import ET54
-from utils.utils import *
+from devices.electronic_load.easttester_et54.easttester_et54 import ET54
+from utils.utils import plot_voltage_data
 
-# Existing plotting function (plot only)
-from devices.dmm.owon_xdm1041.owon_xdm_1041 import plot_voltage_data
 
-def reset_devices(scope, eload):
-    '''
-    Reset all devices to a usable state
-    '''
-
+def reset_devices(scope: SiglentSDS, eload: ET54) -> None:
+    """Reset all devices to a safe, usable state.
+    
+    Disables all scope channels, removes measurements, and powers off load.
+    
+    Args:
+        scope: Connected SiglentSDS oscilloscope instance
+        eload: Connected ET54 electronic load instance
+    """
+    logger.info("Resetting all devices to default state")
+    
     # Disable all scope channels
-    scope.set_channel_enable(1, False)
-    scope.set_channel_enable(2, False)
-    scope.set_channel_enable(3, False)
-    scope.set_channel_enable(4, False)
+    for ch in range(1, 5):
+        scope.set_channel_enable(ch, False)
 
-    # Remove all measurments on scope
-    for i in range(1, 6):
-        scope.measure_on_off(i, False)
+    # Remove all measurements on scope
+    for slot in range(1, 6):
+        scope.measure_on_off(slot, False)
 
-    # Unlock electronic load and turn channel of off
-    eload.unlock()
+    # Unlock electronic load and turn channels off
+    eload.unlock_local_interface()
     eload.off()
+    
+    logger.info("Device reset complete")
 
-def measure_voltage(duration_s):
-    '''
-    Measure voltage for a given duration
-    '''
 
-    # Variables
-    times = []
-    voltages = []
-
-    # Connect to DMM
-    dmm = XDM1000()
-
-    # Set DMM to VDC Mode
-    dmm.set_mode("VDC")
-
-    # Enable fast aquesition
+def measure_voltage(duration_s: float) -> Optional[tuple]:
+    """Measure voltage for specified duration using XDM1000 DMM.
+    
+    Continuously samples DC voltage at 10Hz sampling rate.
+    
+    Args:
+        duration_s: Measurement duration in seconds
+        
+    Returns:
+        Tuple of (times_list, voltages_list) or None if measurement failed
+    """
+    logger.info(f"Starting voltage measurement for {duration_s}s")
     dmm.set_rate("FAST")
 
     # Starttime

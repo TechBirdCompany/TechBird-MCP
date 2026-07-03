@@ -3,6 +3,8 @@
 def _toint(value):
     "strip leading 'R' and convert to int"
 
+    if value is None:
+        raise ValueError("Cannot convert None to int")
     if value.startswith("R"):
         value = value[1:]
     return int(value)
@@ -10,6 +12,8 @@ def _toint(value):
 def _tofloat(value):
     "strip leading 'R' and convert to float"
 
+    if value is None:
+        raise ValueError("Cannot convert None to float")
     if value.startswith("R"):
         value = value[1:]
     return float(value)
@@ -17,6 +21,8 @@ def _tofloat(value):
 def _tofloats(value):
     "strip leading 'R' split and convert all to float"
 
+    if value is None:
+        raise ValueError("Cannot convert None to list of floats")
     if value.startswith("R"):
         value = value[1:].split()
 

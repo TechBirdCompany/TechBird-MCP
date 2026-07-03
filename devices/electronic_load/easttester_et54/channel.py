@@ -1132,6 +1132,60 @@ Mode:           {mode}
 
 
     ############################################################
+    # Measurements
+
+    def get_voltage(self) -> float:
+        """Read input voltage measurement.
+        
+        Returns:
+            Input voltage in volts
+        """
+        return _tofloat(self.query(f"MEAS{self.name}:VOLT?"))
+
+    def get_current(self) -> float:
+        """Read input current measurement.
+        
+        Returns:
+            Input current in amperes
+        """
+        return _tofloat(self.query(f"MEAS{self.name}:CURR?"))
+
+    def get_power(self) -> float:
+        """Read input power measurement.
+        
+        Returns:
+            Input power in watts
+        """
+        return _tofloat(self.query(f"MEAS{self.name}:POW?"))
+
+    ############################################################
+    # Convenience Methods
+
+    def set_function(self, mode: str) -> None:
+        """Set operating mode (convenience alias for .mode property).
+        
+        Args:
+            mode: Operating mode (CC, CV, CP, CR, etc.)
+        """
+        self.mode = mode
+
+    def set_current(self, current: float) -> None:
+        """Set current value (assumes CC mode or CC+CV mode).
+        
+        Args:
+            current: Current in amperes
+        """
+        self.CC_current = current
+
+    def set_voltage(self, voltage: float) -> None:
+        """Set voltage value (assumes CV mode or CC+CV mode).
+        
+        Args:
+            voltage: Voltage in volts
+        """
+        self.CV_voltage = voltage
+
+    ############################################################
     # Load effect test
 
     # XXX: to be implemented
