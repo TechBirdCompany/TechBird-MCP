@@ -434,7 +434,7 @@ class DMM800:
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        range_val = self.get_voltage_range(voltage_norm)
+        range_val = self.get_voltage_range(voltage_range)
 
         numeric_range = {
             "100mV": 0.1,

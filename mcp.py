@@ -9,14 +9,15 @@ def main():
     try:
 
         plot_path = dmm.measure_and_plot_voltage(
-            voltage=0.5,
-            voltage_nom=0,
+            voltage_range=0.5,
+            voltage_norm=0,
             voltage_min=-0.5,
             voltage_max=0.5,
             min_samples=250,
             mode="FAST",
             folder="measurements",
             filename="GND",
+            timeout_sec=60
         )
 
         print(f"Plot saved: {plot_path}")
