@@ -4,7 +4,7 @@ import os
 import time
 from loguru import logger
 
-class HMO3000:
+class RUS_HMO3000:
     def __init__(self, resource):
         """
         resource examples:

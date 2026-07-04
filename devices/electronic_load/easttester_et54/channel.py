@@ -1,5 +1,7 @@
 "Electronic load input channel"
 
+from loguru import logger
+
 from ._support_functions import _toint, _tofloat, _tofloats, _value_extend 
 
 class channel:
@@ -1134,21 +1136,40 @@ Mode:           {mode}
     ############################################################
     # Measurements
 
+    def _measurement_prefix(self) -> str:
+        """Return the measurement command prefix for this channel."""
+        return "MEAS" if self.name == "1" else f"MEAS{self.name}"
+
+    '''
     def get_voltage(self) -> float:
         """Read input voltage measurement.
         
         Returns:
             Input voltage in volts
         """
-        return _tofloat(self.query(f"MEAS{self.name}:VOLT?"))
-
+        prefix = self._measurement_prefix()
+        cmd = f"{prefix}:VOLT?"
+        value = self.query(cmd)
+        logger.debug(f"Querying {cmd}: {value}")
+        return _tofloat(value)
+    '''
+    def get_voltage(self) -> float:
+        """Read input current measurement.
+        
+        Returns:
+            Input current in amperes
+        """
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:VOLT?"))
+    
     def get_current(self) -> float:
         """Read input current measurement.
         
         Returns:
             Input current in amperes
         """
-        return _tofloat(self.query(f"MEAS{self.name}:CURR?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:CURR?"))
 
     def get_power(self) -> float:
         """Read input power measurement.
@@ -1156,7 +1177,8 @@ Mode:           {mode}
         Returns:
             Input power in watts
         """
-        return _tofloat(self.query(f"MEAS{self.name}:POW?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:POW?"))
 
     ############################################################
     # Convenience Methods
@@ -1220,22 +1242,26 @@ Mode:           {mode}
 
     def read_voltage(self):
         "read (measure) input voltage [V]"
-        return _tofloat(self.query(f"MEAS{self.name}:VOLTAGE?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:VOLTAGE?"))
 
     def read_current(self):
         "read (measure) input current [A]"
-        return _tofloat(self.query(f"MEAS{self.name}:CURRENT?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:CURRENT?"))
 
     def read_power(self):
         "read (measure) input power [W]"
-        return _tofloat(self.query(f"MEAS{self.name}:POWER?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:POWER?"))
 
     def read_resistance(self):
         "read (measure) resistance [W]"
-        return _tofloat(self.query(f"MEAS{self.name}:RESISTANCE?"))
+        prefix = self._measurement_prefix()
+        return _tofloat(self.query(f"{prefix}:RESISTANCE?"))
 
     def read_all(self):
         "read (measure) output values: current [A], voltage [V], power [W], resistance [Ω]"
-
-        return _tofloats(self.query(f"MEAS{self.name}:ALL?"))
+        prefix = self._measurement_prefix()
+        return _tofloats(self.query(f"{prefix}:ALL?"))
 

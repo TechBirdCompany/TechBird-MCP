@@ -3,7 +3,7 @@ import datetime
 import os
 import time
 from loguru import logger
-from utils.utils import plot_voltage_data
+from utils.utils import plot_data
 
 # ---------------------------
 # Constants & ENUMS
@@ -19,7 +19,7 @@ ppm_map = {
 # Class
 # ---------------------------
 
-class DMM800:
+class RIGOL_DMM800:
     def __init__(self, resource):
         """
         resource examples:
@@ -536,13 +536,14 @@ class DMM800:
 
         samples = list(range(len(points)))
 
-        return plot_voltage_data(
-            datapoints_samples=samples,
-            datapoints_voltages=points, 
+        return plot_data(
+            x_data=samples,
+            y_data=points,
             title=f"{filename} Voltage Trend",
-            timestamp=timestamp,
-            folder=folder,
+            y_label="Voltage",
+            suffix=timestamp,
+            unit="V",
             nominal_value=voltage_norm,
             min_limit=voltage_min,
-            max_limit=voltage_max
+            max_limit=voltage_max,
         )

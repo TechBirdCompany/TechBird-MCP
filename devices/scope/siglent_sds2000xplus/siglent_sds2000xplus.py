@@ -4,7 +4,7 @@ import os
 import time
 from loguru import logger
 
-class SiglentSDS:
+class Siglent_SDS2000:
     def __init__(self, resource):
         """
         resource examples:
@@ -56,23 +56,20 @@ class SiglentSDS:
         self.write(cmd)
 
 
-    def save_screenshot(self, filename=None, folder=None, timestamp=None):
+    def save_screenshot(self, filename=None, suffix=None):
         cmd = "PRIN? BMP"
         logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
-        time.sleep(5)
-
-        os.makedirs(folder, exist_ok=True)
-
-        # Use an external timestamp when one is provided.
-        if timestamp is None:
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        self.display_hide_menu()
+    
+        os.makedirs("measurements", exist_ok=True)
 
         if filename:
-            full_name = f"{timestamp}_{filename}_SCOPE_.bmp"
+            full_name = f"{filename}_SCOPE_{suffix}.bmp"
         else:
-            full_name = f"{timestamp}_SCOPE.bmp"
+            full_name = f"SCOPE_{suffix}.bmp"
 
-        path = os.path.join(folder, full_name)
+        path = os.path.join("measurements", full_name)
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
@@ -89,7 +86,7 @@ class SiglentSDS:
     # ---------------------------
     # IDENTIFICATION
     # ---------------------------
-    def get_id(self):
+    def identify(self):
         cmd = "*IDN?"
         logger.debug(f"Querying ID from Siglent SDS oscilloscope -> {cmd}")
         return self.query(cmd)
@@ -107,7 +104,7 @@ class SiglentSDS:
         logger.debug(f"Stopping acquisition on Siglent SDS oscilloscope -> {cmd}")
         self.write(cmd)
 
-    def set_bits(self, bit="8Bits"):
+    def set_resolution(self, bit="8Bits"):
         """
         Set the acquisition resolution to 10-bits or 8-bits.
         bit: "10bits" or "8bits"
@@ -275,7 +272,7 @@ class SiglentSDS:
         position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
         source: "C1", "C2", "C3", "C4", "MATH", "REF1", "REF2", "REF3", "REF4"
         """
-        cmd = f":MEASure:ADVanced:P{position}:SOURce1 {source}"
+        cmd = f":MEASure:ADVanced:P{position}:SOURce1 C{source}"
         logger.debug(f"Measuring source {source} on channel {position} -> {cmd}")
         return self.write(cmd)
 
@@ -288,3 +285,227 @@ class SiglentSDS:
         cmd = f":MEASure:ADVanced:P{position} {'ON' if state else 'OFF'}"
         logger.debug(f"Setting measurement {position} to {'ON' if state else 'OFF'} -> {cmd}")
         self.write(cmd)
+
+    # ---------------------------
+    # API Functions
+    # ---------------------------
+
+    def set_measurement(
+        self,
+        position: int,
+        channel: int,
+        measurement_type: str,
+    ):
+
+        """
+        Adds a measurement to the screen.
+
+        Args:
+            place: Measurement slot.
+            channel: Channel number (1, 2, 3, or 4)
+            measurement_type:
+                OFF
+                VMAX
+                VMIN
+                VPP
+                VRMS
+                FREQ
+                PERIOD
+                DUTY
+                ...
+        """
+
+        if measurement_type == "OFF":
+            self.measure_on_off(
+                position=position,
+                state=False
+            )
+            
+            self.measure_statistics_on_off(
+                state=False
+            )
+            
+        else:
+
+            self.measure_on_off(
+                position=position,
+                state=True
+            )
+            
+            self.measure_statistics_on_off(
+                state=True
+            )
+
+            self.measure_source1(
+                position=position,
+                source=channel
+            )
+            
+            self.measure_item(
+                position=position,
+                parameter=measurement_type
+            )
+            
+    def reset(self):
+        """
+        Clears persistence,
+        statistics and measurements.
+        """
+        for i in range(1,5):
+            self.set_channel_enable(i, False)
+        
+        for i in range(1,6):
+            self.set_measurement(i, 1, "OFF")
+
+        self.measure_statistics_on_off(False)
+
+        self.measure_statistics_reset()
+        self.display_clear()
+
+        time.sleep(2)
+
+    def set_persistence(
+        self,
+        duration: float,
+    ):
+        """
+        Enables display persistence.
+
+        Args:
+            time: Persistence duration in seconds.
+        """
+
+        if duration == 0:
+            self.display_persistance(
+                duration="OFF"
+            )
+
+        else:
+            self.display_persistance(
+                duration=duration
+            )
+
+    def set_channel(
+        self,
+        channel: int,
+        enable: bool,
+        attenuation: float,
+        unit: str,
+        label: str,
+        coupling: str,
+        bandwidth_limit: str,
+        volts_per_div: float,
+        position: float,
+    ):
+        """
+        Configures a channel.
+
+        Args:
+            channel: Channel number.
+            enable: Show or hide channel.
+            attenuation: Probe attenuation (1x, 10x, 100x ...).
+            unit: V, A, W, ...
+            label: Channel label.
+            coupling: DC, AC, GND.
+            bandwidth_limit: Enable bandwidth limit.
+            scale: Vertical scale per division.
+            position: Vertical position.
+        """
+
+        if enable is False:
+            self.set_channel_enable(
+                channel=channel,
+                state=False
+            )
+            return
+        else:
+            self.set_channel_enable(
+                channel=channel,
+                state=True
+            )
+        
+        if not label:
+            self.set_channel_label_on_off(
+                state=False
+            )
+        
+        else:
+            self.set_channel_label_on_off(
+                channel=channel,
+                state=True
+            )
+
+            self.set_channel_label_text(
+                channel=channel,
+                text=label
+            )
+
+        self.set_channel_attenuation(
+            channel=channel,
+            attenuation=attenuation
+        )
+
+        self.set_channel_unit(
+            channel=channel,
+            unit=unit
+        )
+
+        self.set_channel_coupling(
+            channel=channel,
+            coupling=coupling
+        )
+
+        self.set_channel_bwlimit(
+            channel=channel,
+            bw=bandwidth_limit
+        )
+
+        self.set_channel_vertical_scale(
+            channel=channel,
+            volts_per_div=volts_per_div
+        )
+
+        self.set_channel_offset(
+            channel=channel,
+            offset=position
+        )
+
+    def set_trigger(
+        self,
+        channel: int,
+        mode: str,
+        level: float,
+    ):
+        """
+        Configures edge trigger.
+
+        Args:
+            channel: Trigger source.
+            mode: Trigger mode.
+            level: Trigger level.
+        """
+
+        self.set_trigger_edge_source(
+            channel=channel
+        )
+
+        self.set_trigger_edge(
+            level=level
+        )
+
+
+    def get_count(
+        self,
+        position: int,
+    ) -> float:
+
+        cmd = (
+            f":MEASure:ADVanced:P{position}:STATistics? COUNt"
+        )
+
+        logger.debug(
+            f"Get count from statistics "
+            f"at position {position} -> {cmd}"
+        )
+
+        return float(self.query(cmd))

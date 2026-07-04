@@ -1,10 +1,15 @@
+"""PeakTech 2275 Electronic Load Controller"""
+
+
+
 from typing import Optional, Tuple
 from utils.utils import to_float
 from loguru import logger
 import serial
 from serial.tools import list_ports
+import time
 
-class PeakTech2275:
+class PeakTech_2275:
     """PeakTech 2275 Electronic Load.
     
     Serial-based electronic load controller. py-visa is not compatible
@@ -41,13 +46,12 @@ class PeakTech2275:
             timeout=timeout,
         )
 
-
     @classmethod
     def auto_connect(
         cls,
         baudrate: int = 38400,
         timeout: float = 10.0,
-    ) -> "PeakTech2275":
+    ) -> "PeakTech_2275":
         """
         Automatically detect and connect to the first
         available PeakTech electronic load.
@@ -62,59 +66,69 @@ class PeakTech2275:
 
         logger.info("Auto-detecting PeakTech electronic load...")
 
-        ports = list(list_ports.comports())
+        for attempt in range(1, 4):
+            logger.info(f"Auto-connect attempt {attempt}/3")
 
-        if not ports:
-            logger.error("No serial ports detected")
-            raise RuntimeError("No serial ports available")
+            ports = list(list_ports.comports())
 
-        for port in ports:
-            logger.debug(f"Testing serial port: {port.device}")
+            if not ports:
+                logger.warning("No serial ports detected")
+            else:
+                for port in ports:
+                    logger.debug(f"Testing serial port: {port.device}")
 
-            try:
-                logger.debug(f"Opening {port.device}")
+                    try:
+                        logger.debug(f"Opening {port.device}")
 
-                ser = serial.Serial(
-                    port=port.device,
-                    baudrate=baudrate,
-                    timeout=1,
-                    write_timeout=1,
-                )
+                        ser = serial.Serial(
+                            port=port.device,
+                            baudrate=baudrate,
+                            timeout=1,
+                            write_timeout=1,
+                        )
 
-                logger.debug(f"Sending IDN query to {port.device}")
+                        logger.debug(f"Sending IDN query to {port.device}")
 
-                ser.reset_input_buffer()
-                ser.write(b"*IDN?\r\n")
+                        ser.reset_input_buffer()
+                        ser.write(b"*IDN?\r\n")
 
-                response = (
-                    ser.readline()
-                    .decode(errors="ignore")
-                    .strip()
-                )
+                        response = (
+                            ser.readline()
+                            .decode(errors="ignore")
+                            .strip()
+                        )
 
-                logger.debug(f"Received '{response}'")
-                ser.close()
+                        logger.debug(f"Received '{response}'")
+                        ser.close()
 
-                if (
-                    "PEAKTECH" in response.upper()
-                    and "LOAD" in response.upper()
-                ):
-                    logger.success(
-                        f"PeakTech electronic load found on {port.device}"
-                    )
+                        if (
+                            "PEAKTECH" in response.upper()
+                            and "LOAD" in response.upper()
+                        ):
+                            logger.success(
+                                f"PeakTech electronic load found on {port.device}"
+                            )
 
-                    return cls(
-                        port=port.device,
-                        baudrate=baudrate,
-                        timeout=timeout,
-                    )
+                            return cls(
+                                port=port.device,
+                                baudrate=baudrate,
+                                timeout=timeout,
+                            )
 
-            except Exception as e:
-                logger.debug(f"Skipping {port.device}: {e}")
-                continue
+                    except Exception as e:
+                        logger.debug(f"Skipping {port.device}: {e}")
 
-        logger.error("No PeakTech electronic load found")
-        raise RuntimeError("No PeakTech electronic load found")
+            logger.warning(
+                f"No PeakTech electronic load found on attempt {attempt}/3"
+            )
+
+            if attempt < 3:
+                time.sleep(1)
+
+        logger.error("No PeakTech electronic load found after 3 attempts")
+        raise RuntimeError(
+            "No PeakTech electronic load found after 3 attempts"
+        )
 
 
 
@@ -131,6 +145,7 @@ class PeakTech2275:
         try:
             logger.info(f"Sending command: {cmd}")
             self.inst.write(f"{cmd}\r\n".encode())
+            self.inst.flush()
         except Exception as e:
             logger.error(f"Command failed '{cmd}': {e}")
 
@@ -147,6 +162,7 @@ class PeakTech2275:
             logger.info(f"Querying: {cmd}")
             self.inst.reset_input_buffer()
             self.inst.write(f"{cmd}\r\n".encode())
+            self.inst.flush()
             
             response = (
                 self.inst.readline()
@@ -207,7 +223,10 @@ class PeakTech2275:
             Load state string or None if failed
         """
         logger.info("Querying load state")
-        return self.query("LOAD?")
+        state = self.query("LOAD:STATE?")
+        if state is None:
+            state = self.query("LOAD?")
+        return state
 
 
 
@@ -228,10 +247,15 @@ class PeakTech2275:
         
         See device manual for all available modes.
         """
+
         logger.info(f"Setting mode to {mode}")
         self.write(f"LOAD:MODE {mode}")
 
-    def set_current(self, current: float, channel: Optional[int] = None) -> None:
+
+
+    def set_current(self, current: 
+                    float, channel: 
+                    Optional[int] = None) -> None:
         """Set target current for constant current mode.
         
         Args:
@@ -240,8 +264,15 @@ class PeakTech2275:
             channel: Channel number (ignored - PeakTech is single-channel,
                     provided for ET54 compatibility)
         """
+
         logger.info(f"Setting current to {current}A")
+
         self.write(f"LOAD:CURR {current}")
+
+        logger.info(
+            f"Current set result: "
+            f"{self.query('LOAD:CURR?')}"
+        )
 
 
 

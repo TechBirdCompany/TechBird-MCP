@@ -1,35 +1,38 @@
+from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
+from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
+
+from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
+from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
+
+from devices.electronic_load.easttester_et54.easttester_et54 import EastTester_ET54
+from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
+
+from testcases.loadtest import load_test
 import time
-from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech2275
-from devices.electronic_load.easttester_et54.easttester_et54 import EastTesterET54
+from loguru import logger
 
-load = 2
-if load == 1:
-    load = EastTesterET54.auto_connect()
-else:
-    load = PeakTech2275.auto_connect()
+def main():
 
-try:
+    scope = Siglent_SDS2000(
+        "TCPIP0::10.10.10.90::INSTR"
+    )
+
+    dmm = OWON_XDM1000()
+
+    #eload = EastTester_ET54.auto_connect()
+    eload = PeakTech_2275.auto_connect()
     
-    load.set_mode("CC", channel=1)
+    load_test(
+        scope=scope,
+        dmm=dmm,
+        eload=eload,
+        voltage=5,
+        max_voltage=5.2,
+        min_voltage=4.8,
+        domain="VCC5V0",
+        current=0.5,
+        single=True
+    )
 
-    time.sleep(0.5)
-
-    load.set_current(0.5, channel=1)
-
-    time.sleep(0.5)
-
-    load.load_on()
-
-    time.sleep(1)
-
-    measurements = load.fetch(channel=1)
-    print(f"Measurements: Voltage={measurements[0]}V, Current={measurements[1]}A")
-
-    time.sleep(10)
-
-    load.load_off()
-
-    time.sleep(1)
-
-finally:
-    load.close()
+if __name__ == "__main__":
+    main()

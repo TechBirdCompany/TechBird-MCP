@@ -91,74 +91,80 @@ def get_folder(folder: Optional[str] = None) -> str:
 
 
 
-def plot_voltage_data(
-    datapoints_samples: List[float],
-    datapoints_voltages: List[float],
+def plot_data(
+    x_data,
+    y_data,
     title: str,
-    timestamp: str,
-    folder: str,
-    nominal_value: float,
-    min_limit: float,
-    max_limit: float,
-) -> Optional[str]:
-    """Plot voltage data with specification limits and save to file.
-    
-    Creates a scatter plot of voltage measurements with specification bands,
-    nominal value line, and statistics. Saves plot as PNG file.
-    
-    Args:
-        datapoints_samples: List of time/sample values for x-axis
-        datapoints_voltages: List of voltage measurements for y-axis
-        title: Plot title
-        timestamp: Timestamp string for filename (e.g., "20240115_120530")
-        folder: Folder path to save plot file
-        nominal_value: Reference nominal voltage value
-        min_limit: Specification minimum limit
-        max_limit: Specification maximum limit
-        
-    Returns:
-        Path to saved PNG file, or None if no data to plot
+    y_label: str,
+    suffix: str = "",
+    unit: str = "",
+    nominal_value: float = 0.0,
+    min_limit: float = 0.0,
+    max_limit: float = 0.0,
+):
     """
-    if not datapoints_voltages:
+    Plot measurement data with specification limits and save to file.
+
+    Args:
+        x_data: X-axis values (usually sample numbers)
+        y_data: Measured values
+        title: Plot title
+        y_label: Y-axis label
+        suffix: Optional filename prefix/suffix
+        unit: Measurement unit (V, A, W, Ω, ...)
+        nominal_value: Target value
+        min_limit: Lower specification limit
+        max_limit: Upper specification limit
+
+    Returns:
+        Path to saved PNG file or None
+    """
+
+    if not y_data:
         logger.warning("No data to plot")
         return None
 
-    # Calculate statistics
-    v_min = min(datapoints_voltages)
-    v_max = max(datapoints_voltages)
-    v_avg = sum(datapoints_voltages) / len(datapoints_voltages)
+    value_min = min(y_data)
+    value_max = max(y_data)
+    value_avg = sum(y_data) / len(y_data)
 
-    min_idx = datapoints_voltages.index(v_min)
-    max_idx = datapoints_voltages.index(v_max)
+    min_idx = y_data.index(value_min)
+    max_idx = y_data.index(value_max)
 
     logger.debug(
-        f"Plot stats → Min: {v_min:.4f}V, Max: {v_max:.4f}V, Avg: {v_avg:.4f}V"
+        f"Plot stats → "
+        f"Min: {value_min:.4f}{unit}, "
+        f"Max: {value_max:.4f}{unit}, "
+        f"Avg: {value_avg:.4f}{unit}"
     )
 
-    # Calculate display range
-    spec_half_span = (max_limit - min_limit) / 2
+    spec_half_span = abs(max_limit - min_limit) / 2
+
     measurement_span = max(
-        abs(v_min - nominal_value),
-        abs(v_max - nominal_value),
+        abs(value_min - nominal_value),
+        abs(value_max - nominal_value),
     )
 
     max_span = max(spec_half_span, measurement_span)
+
+    if max_span == 0:
+        max_span = 1
+
     display_span = max_span * 1.5
 
     y_lower = nominal_value - display_span
     y_upper = nominal_value + display_span
 
-    # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Specification bands
     ax.axhspan(
         y_lower,
         min_limit,
-        color="red",
-        alpha=0.15,
+        facecolor="red",
+        alpha=0.08,
+        hatch="xx",
+        edgecolor="red",
         zorder=0,
-        label="Out of spec (low)",
     )
 
     ax.axhspan(
@@ -167,36 +173,34 @@ def plot_voltage_data(
         color="green",
         alpha=0.10,
         zorder=0,
-        label="Specification range",
     )
 
     ax.axhspan(
         max_limit,
         y_upper,
-        color="red",
-        alpha=0.15,
+        facecolor="red",
+        alpha=0.08,
+        hatch="xx",
+        edgecolor="red",
         zorder=0,
-        label="Out of spec (high)",
     )
 
-    # Plot data points
     ax.scatter(
-        datapoints_samples,
-        datapoints_voltages,
+        x_data,
+        y_data,
         color="darkorange",
         marker="x",
         s=20,
-        label=f"Samples ({len(datapoints_voltages)})",
+        label=f"Samples ({len(y_data)})",
         zorder=3,
     )
 
-    # Reference lines
     ax.axhline(
         min_limit,
         color="green",
         linestyle="--",
         linewidth=2,
-        label=f"Spec Min: {min_limit:.4f}V",
+        label=f"Spec Min: {min_limit:.4f}{unit}",
     )
 
     ax.axhline(
@@ -204,82 +208,106 @@ def plot_voltage_data(
         color="green",
         linestyle="--",
         linewidth=2,
-        label=f"Spec Max: {max_limit:.4f}V",
+        label=f"Spec Max: {max_limit:.4f}{unit}",
     )
 
     ax.axhline(
         nominal_value,
         color="blue",
         linewidth=2.5,
-        label=f"Nominal: {nominal_value:.4f}V",
+        label=f"Nominal: {nominal_value:.4f}{unit}",
     )
 
     ax.axhline(
-        v_avg,
+        value_avg,
         color="darkorange",
         linestyle=":",
         linewidth=2,
-        label=f"Avg: {v_avg:.4f}V",
+        label=f"Avg: {value_avg:.4f}{unit}",
     )
 
-    # Min/Max markers
     ax.scatter(
-        datapoints_samples[min_idx],
-        v_min,
+        x_data[min_idx],
+        value_min,
         color="black",
         marker="v",
         s=120,
         zorder=5,
-        label=f"Measured Min: {v_min:.4f}V",
+        label=f"Measured Min: {value_min:.4f}{unit}",
     )
 
     ax.scatter(
-        datapoints_samples[max_idx],
-        v_max,
+        x_data[max_idx],
+        value_max,
         color="black",
         marker="^",
         s=120,
         zorder=5,
-        label=f"Measured Max: {v_max:.4f}V",
+        label=f"Measured Max: {value_max:.4f}{unit}",
     )
 
-    # Annotations
     ax.annotate(
-        f"{v_min:.4f}V",
-        (datapoints_samples[min_idx], v_min),
+        f"{value_min:.4f}{unit}",
+        (x_data[min_idx], value_min),
         xytext=(0, -20),
         textcoords="offset points",
         ha="center",
     )
 
     ax.annotate(
-        f"{v_max:.4f}V",
-        (datapoints_samples[max_idx], v_max),
+        f"{value_max:.4f}{unit}",
+        (x_data[max_idx], value_max),
         xytext=(0, 10),
         textcoords="offset points",
         ha="center",
     )
 
-    # Formatting
     ax.set_ylim(y_lower, y_upper)
-    ax.ticklabel_format(useOffset=False, style="plain", axis="y")
+
+    ax.ticklabel_format(
+        useOffset=False,
+        style="plain",
+        axis="y",
+    )
 
     ax.set_xlabel("Samples")
-    ax.set_ylabel("Voltage (V)")
+
+    if unit:
+        ax.set_ylabel(f"{y_label} ({unit})")
+    else:
+        ax.set_ylabel(y_label)
+
     ax.set_title(title)
 
-    ax.grid(True, linestyle=":", linewidth=0.5)
+    ax.grid(
+        True,
+        linestyle=":",
+        linewidth=0.5,
+    )
+
     ax.legend(loc="best")
 
     plt.tight_layout()
 
-    # Save file
-    safe_title = title.replace(" ", "_")
-    filename = f"{timestamp}_{safe_title}_DMM.png"
-    path = os.path.join(folder, filename)
+    os.makedirs("measurements", exist_ok=True)
+
+    
+    filename = f"{title}_{suffix}".strip("_")
+    filename = filename.replace(" ", "_")
+
+    path = os.path.join(
+        "measurements",
+        f"{filename}.png",
+    )
 
     logger.info(f"Saving plot to: {path}")
-    plt.savefig(path, dpi=150)
-    plt.close()
+
+    plt.savefig(
+        path,
+        dpi=150,
+        bbox_inches="tight",
+    )
+
+    plt.close(fig)
 
     return path

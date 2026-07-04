@@ -1,4 +1,4 @@
-"""EastTester ET54 Series Electronic Load Controller."""
+"""EastTester ET54 Series Electronic Load Controller"""
 
 import sys
 import time
@@ -8,7 +8,7 @@ from loguru import logger
 from .channel import channel
 
 
-class EastTesterET54:
+class EastTester_ET54:
     """EastTester ET54 Series Electronic Load.
     
     Multi-channel electronic load controller supporting 1 or 2 channel models.
@@ -92,42 +92,40 @@ class EastTesterET54:
 
     @classmethod
     def auto_connect(cls, **kwargs: Any) -> "EastTesterET54":
-        """Automatically detect and connect to first available ET54 device.
+        """Automatically detect and connect to first available ET54 device."""
         
-        Scans all serial ports for ET54 electronic loads and connects to the first one found.
-        
-        Returns:
-            ET54 instance connected to detected device
-            
-        Raises:
-            RuntimeError: If no ET54 device found on serial ports
-        """
         logger.info("Auto-detecting ET54 electronic load on serial ports")
-        rm = pyvisa.ResourceManager()
-        resources = rm.list_resources()
 
-        for resource_id in resources:
-            if not resource_id.startswith("ASRL"):
-                continue
+        for attempt in range(1, 4):
+            logger.info(f"Auto-connect attempt {attempt}/3")
 
-            try:
-                inst = rm.open_resource(resource_id)
-                inst.timeout = kwargs.get("timeout", 500)
+            rm = pyvisa.ResourceManager()
+            resources = rm.list_resources()
 
-                response = inst.query("*IDN?")
-                inst.close()
+            for resource_id in resources:
+                if not resource_id.startswith("ASRL"):
+                    continue
 
-                if isinstance(response, str):
-                    model = response.split()[0]
+                try:
+                    inst = rm.open_resource(resource_id)
+                    inst.timeout = kwargs.get("timeout", 500)
 
-                    if model.upper().startswith("ET54") or model == "XXXXXX":
-                        logger.success(f"ET54 found at {resource_id}: {response}")
-                        return cls(resource_id, **kwargs)
+                    response = inst.query("*IDN?")
+                    inst.close()
 
-            except Exception as e:
-                logger.debug(f"Skipping {resource_id}: {e}")
+                    if isinstance(response, str):
+                        model = response.split()[0]
 
-        raise RuntimeError("No ET54 device found on available serial ports")
+                        if model.upper().startswith("ET54") or model == "XXXXXX":
+                            logger.success(f"ET54 found at {resource_id}: {response}")
+                            return cls(resource_id, **kwargs)
+
+                except Exception as e:
+                    logger.debug(f"Skipping {resource_id}: {e}")
+
+            logger.warning(f"No ET54 found on attempt {attempt}/3")
+
+        raise RuntimeError("No ET54 device found after 3 attempts")
 
     def __del__(self) -> None:
         """Close connection on deletion."""
@@ -341,16 +339,11 @@ class EastTesterET54:
             (voltage, current)
         """
 
-        logger.info(
-            f"Fetching measurements from CH{channel}"
-        )
+        logger.info(f"Fetching measurements from CH{channel}")
 
         ch = self.Channels[channel - 1]
 
         voltage = ch.get_voltage()
         current = ch.get_current()
 
-        return (
-            float(voltage),
-            float(current),
-        )
+        return (float(voltage),float(current))
