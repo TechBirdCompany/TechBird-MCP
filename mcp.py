@@ -19,19 +19,19 @@ def main():
 
     dmm = OWON_XDM1000()
 
-    #eload = EastTester_ET54.auto_connect()
-    eload = PeakTech_2275.auto_connect()
+    eload = EastTester_ET54.auto_connect()
+    #eload = PeakTech_2275.auto_connect()
     
     load_test(
         scope=scope,
         dmm=dmm,
         eload=eload,
         voltage=5,
-        max_voltage=5.2,
-        min_voltage=4.8,
+        max_voltage=5.05,
+        min_voltage=4.95,
         domain="VCC5V0",
         current=0.5,
-        single=True
+        single=False
     )
 
 if __name__ == "__main__":

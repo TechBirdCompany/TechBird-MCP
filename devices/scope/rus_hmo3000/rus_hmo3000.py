@@ -261,43 +261,38 @@ class RUS_HMO3000:
     # ---------------------------
     # Device Control
     # ---------------------------
-    def get_id(self):
+    def identify(self):
         cmd = "*IDN?"
-        logger.debug(f"Querying ID from Siglent SDS oscilloscope -> {cmd}")
+        logger.debug(f"Querying ID -> {cmd}")
         return self.query(cmd)
     
-
-    
-
-
-
-
-
-
 
 
     # ---------------------------
     # ACQUIRE CONTROL
     # ---------------------------
     def run(self):
-        cmd = ":TRIGger:RUN"
-        logger.debug(f"Starting acquisition on Siglent SDS oscilloscope -> {cmd}")
+        cmd = ":RUN"
+        logger.debug(f"Starting acquisition -> {cmd}")
         self.write(cmd)
 
     def stop(self):
-        cmd = ":TRIGger:STOP"
-        logger.debug(f"Stopping acquisition on Siglent SDS oscilloscope -> {cmd}")
+        cmd = "STOP"
+        logger.debug(f"Stopping acquisition -> {cmd}")
         self.write(cmd)
 
-    def set_bits(self, bit="8Bits"):
+    def set_resolution(self, bit="8Bits"):
         """
         Set the acquisition resolution to 10-bits or 8-bits.
         bit: "10bits" or "8bits"
         """
-        cmd = f":ACQuire:RESolution {bit}"
+        if bit != "8Bits":
+            bit = "AUTO"
+        else:
+            bit = "OFF"
+        cmd = f"ACQuire:HRESolution {bit}"
         logger.debug(f"Setting acquisition resolution to {bit} -> {cmd}")
         self.write(cmd)
-
 
     # ---------------------------
     # CHANNEL SETTINGS
@@ -306,19 +301,19 @@ class RUS_HMO3000:
         """
         Set the bandwidth limit for a specific channel.
         channel: 1, 2, 3, or 4 
-        bw: "FULL" or "20MHz"
+        bw: "FULL" or "B20"
         """
-        cmd = f":CHANnel{channel}:BWLimit {bw}"
+        cmd = f"CHANnel{channel}:BANDwidth {bw}"
         logger.debug(f"Setting bandwidth limit for channel {channel} to {bw} -> {cmd}")
         self.write(cmd)
 
-    def set_channel_vertical_scale(self, channel, volts_per_div):
+    def set_channel_scale(self, channel, volts_per_div):
         """
         Set the vertical scale (volts per division) for a specific channel.
         channel: 1, 2, 3, or 4
         volts_per_div: float value representing volts per division
         """
-        cmd = f":CHANnel{channel}:SCALe {volts_per_div}"
+        cmd = f"CHANnel{channel}:SCALe {volts_per_div}"
         logger.debug(f"Setting vertical scale for channel {channel} to {volts_per_div} V/div -> {cmd}")
         self.write(cmd)
 
@@ -328,12 +323,12 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         offset: float value representing the offset
         """
-        cmd = f":CHANnel{channel}:OFFset {offset}"
+        cmd = f"CHANnel{channel}:POSition {offset}"
         logger.debug(f"Setting vertical offset for channel {channel} to {offset} V -> {cmd}")
         self.write(cmd)
 
     def set_channel_enable(self, channel, state=True):
-        cmd = f":CHANnel{channel}:SWITch {'ON' if state else 'OFF'}"
+        cmd = f"CHANnel{channel}:STATe {'ON' if state else 'OFF'}"
         logger.debug(f"Setting channel {channel} enable state to {'ON' if state else 'OFF'} -> {cmd}")
         self.write(cmd)
 
@@ -343,12 +338,12 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         coupling: "DC" or "AC"
         """
-        cmd = f":CHANnel{channel}:COUPling {coupling}"
+        cmd = f"CHANnel{channel}:COUPling {coupling}"
         logger.debug(f"Setting coupling mode for channel {channel} to {coupling} -> {cmd}")
         self.write(cmd)
 
     def set_channel_label_on_off(self, channel, state=False):
-        cmd = f":CHANnel{channel}:LABel {'ON' if state else 'OFF'}"
+        cmd = f"CHANnel{channel}:LABel:STATe {'ON' if state else 'OFF'}"
         logger.debug(f"Setting label visibility for channel {channel} to {'ON' if state else 'OFF'} -> {cmd}")
         self.write(cmd)
 
@@ -358,7 +353,7 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         text: string value representing the label text 
         """
-        cmd = f':CHANnel{channel}:LABel:TEXT "{text}"'
+        cmd = f'CHANnel{channel}:LABel:TEXT "{text}"'
         logger.debug(f"Setting label text for channel {channel} to '{text}' -> {cmd}")
         self.write(cmd)
 
@@ -368,10 +363,9 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         unit: "V" or "A"
         """
-        cmd = f":CHANnel{channel}:UNIT {unit}"
+        cmd = f"PROBe{channel}:SETup:ATTenuation:UNIT {unit}"
         logger.debug(f"Setting unit for channel {channel} to {unit} -> {cmd}")
         self.write(cmd)
-
 
     def set_channel_attenuation(self, channel, attenuation):
         """
@@ -381,7 +375,7 @@ class RUS_HMO3000:
         """
         attenuation_nr3 = f"{attenuation:.6E}"
 
-        cmd = f":CHANnel{channel}:PROBe VALue,{attenuation_nr3}"
+        cmd = f"PROBe{channel}:SETup:ATTenuation:MANual {attenuation_nr3}"
         
         logger.debug(
             f"Setting attenuation for channel {channel} to {attenuation} "
@@ -389,6 +383,7 @@ class RUS_HMO3000:
         )
 
         self.write(cmd)
+
 
 
     # ---------------------------
@@ -399,38 +394,49 @@ class RUS_HMO3000:
         logger.debug(f"Setting timebase to {sec_per_div} s/div -> {cmd}")
         self.write(cmd)
 
+
+
     # ---------------------------
     # TRIGGER
     # ---------------------------
-    def set_trigger_edge(self, level=0.0):
-        cmd = f":TRIGger:EDGE:LEVel {level}"
+    def set_trigger_edge(self, channel, level=0.0):
+        cmd = f":TRIGger:A:LEVelE:LEVel{channel}[:VALue] {level}"
         logger.debug(f"Setting trigger edge level to {level} V -> {cmd}")
         self.write(cmd)
 
-    def set_trigger_edge_source(self, channel):
-        """
-        Siglent SDS 2000xplus: Needs to activate the desired channel first, otherwise Ext Trigger will be selected
-        """
-        cmd = f":TRIGger:EDGE:SOURce C{channel}"
-        logger.debug(f"Setting trigger edge source to channel {channel} -> {cmd}")
-        self.write(cmd)
 
+#ab hier... im handbuch seite 99 für statistiks
     # ---------------------------
     # MEASUREMENT  
     # ---------------------------
 
-    def measure_statistics_on_off(self, state=True):
+    def measure_statistics_on_off(self, position: int, state: bool=True):
         """
         Enable or disable measurement statistics on the oscilloscope.
         state: True to enable, False to disable
         """
-        cmd = f":MEASure:ADVanced:STATistics {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting measurement statistics to {'ON' if state else 'OFF'} -> {cmd}")
+        cmd = f"MEASurement{position}:STATistics[:ENABle] {'ON' if state else 'OFF'}"
+        logger.debug(f"Setting measurement position {position} statistics to {'ON' if state else 'OFF'} -> {cmd}")
         self.write(cmd)
 
-    def measure_statistics_reset(self):
-        cmd = ":MEASure:ADVanced:STATistics:RESet"
+    def measure_statistics_reset(self, position: int):
+        cmd = "MEASurement{position}:STATistics:RESet"
         logger.debug(f"Resetting measurement statistics on Siglent SDS oscilloscope -> {cmd}")
+        self.write(cmd)
+
+    def get_count(self, position: int):
+        cmd = "MEASurement{position}:RESult:WFMCount? [<WaveformCount>]"
+        logger.debug(f"Getting count -> {cmd}")
+        self.query(cmd)       
+        
+    def measure_enable(self, position:int, state: bool = True):
+        cmd = f"MEASurement{position}[:ENABle] {state}"
+        logger.debug("Activationg measurment at position {position}")
+        self.write(cmd)
+
+    def measurment_source(self, position: int, source:int):
+        cmd = f"MEASurment{position}:CH{source}"
+        logger.debug(f"Setting position {position} to channel {source}")
         self.write(cmd)
 
     def measure_item(self, position, parameter):
@@ -438,16 +444,13 @@ class RUS_HMO3000:
         Measure a specific item on the oscilloscope.
         position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
         parameter:
-            {PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
-            TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
-            VSP|RPRE|PER|FREQ|TMAX|TMIN|PWID|NWID|DUTY|NDU
-            TY|WID|NBWID|DELAY|TIMEL|RISE|FALL|RISE10T90|FALL9
-            0T10|CCJ|PAREA|NAREA|AREA|ABSAREA|CYCLES|REDGE
-            S|FEDGES|EDGES|PPULSES|NPULSES|PHA|SKEW|FRR|F
-            RF|FFR|FFF|LRR|LRF|LFR|LFF|PACArea|NACArea|ACArea|A
-            BSACArea|PSLOPE|NSLOPE|TSR|TSF|THR|THF}
+            FREQuency | PERiod | PEAK | UPEakvalue | LPEakvalue | PPCount |
+            NPCount | RECount | FECount | HIGH | LOW | AMPLitude | CRESt |
+            MEAN | RMS | RTIMe | FTIMe | PDCYcle | NDCYcle | PPWidth |
+            NPWidth | CYCMean | CYCRms | STDDev | TFRequency | TPERiode |
+            POVershoot | NOVershoot | DELay | PHASe
         """
-        cmd = f":MEASure:ADVanced:P{position}:TYPE {parameter}"
+        cmd = f":MEASurement{position}:MAIN {parameter}"
         logger.debug(f"Measuring {parameter} on channel {position} -> {cmd}")
         return self.write(cmd)
 
@@ -470,3 +473,81 @@ class RUS_HMO3000:
         cmd = f":MEASure:ADVanced:P{position} {'ON' if state else 'OFF'}"
         logger.debug(f"Setting measurement {position} to {'ON' if state else 'OFF'} -> {cmd}")
         self.write(cmd)
+
+    def set_channel(
+        self,
+        channel: int,
+        enable: bool,
+        attenuation: float,
+        unit: str,
+        label: str,
+        coupling: str,
+        bandwidth_limit: str,
+        volts_per_div: float,
+        position: float,
+        ) -> None:
+        
+
+        self.channel_state(
+            channel=channel,
+            state=enable
+        )
+        
+        if enable == False:
+            return
+        
+        self.set_channel_attenuation(
+            channel=channel,
+            attenuation=attenuation
+        )
+        
+        self.set_channel_unit(
+            channel=channel,
+            unit=unit
+        )
+
+        if label == "":
+            self.set_channel_label_on_off(False)
+        else:
+            self.set_channel_label_on_off(True)
+
+            self.set_channel_label_text(
+                channel=channel,
+                text=label
+            )
+
+        self.channel_coupling(
+            channel=channel,
+            coupling=coupling
+        )
+
+        self.channel_bandwidth(
+            channel=channel,
+            bandwidth=bandwidth_limit
+        )
+
+        self.channel_scale(
+            channel=channel,
+            scale=volts_per_div
+        )
+
+        self.channel_position(
+            channel=channel,
+            position=position
+        )
+
+    def set_trigger(
+            self,
+            channel:int,
+            mode:str,
+            level:float,
+    ):
+        self.trigger_mode(
+            mode=mode
+        )
+
+        self.set_trigger_edge(
+            channel=channel,
+            level=level
+        )
+
