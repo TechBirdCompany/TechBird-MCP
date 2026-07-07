@@ -66,7 +66,7 @@ class scope(Protocol):
                                 [AC|DC]
 
             bandwidth_limit:    Sets the bandwidth limit
-                                [20MHz|FULL]
+                                [FULL|20MHz]
 
             volts_per_div:      Sets the vertical scale as volts per devision... even with current
 
@@ -204,4 +204,9 @@ class scope(Protocol):
 
         Returns:
             Integer of captured waveforms
+        """
+
+    def persistence_clear(self):
+        """
+        Clears the persistence traces from the display.
         """

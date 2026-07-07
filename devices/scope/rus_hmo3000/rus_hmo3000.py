@@ -3,6 +3,7 @@ import datetime
 import os
 import time
 from loguru import logger
+from typing import Literal
 
 class RUS_HMO3000:
     def __init__(self, resource):
@@ -14,9 +15,9 @@ class RUS_HMO3000:
         self.rm = pyvisa.ResourceManager()
         self.inst = self.rm.open_resource(resource)
         self.inst.timeout = 5000
+
         self._channel_scales = {}
 
-        # SCPI empfohlen: kurze Headers deaktivieren/aktivieren je nach Bedarf
         self.write("CHDR SHORT")
 
     # ---------------------------
@@ -25,422 +26,350 @@ class RUS_HMO3000:
     def write(self, cmd):
         try:
             self.inst.write(cmd)
-            logger.info(f"Try command -> {cmd}")
         except:
             logger.warning(f"Failure with command -> {cmd}")
 
     def query(self, cmd):
-        return self.inst.query(cmd).strip()
+        try:
+            return self.inst.query(cmd).strip()
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
 
     def close(self):
         cmd = "CLOSE"
         try:
             self.inst.close()
-            logger.info(f"Closing connection to oscilloscope -> {cmd}")
         except:
-            logger.warning(f"Failure with command -> {cmd}")
-
+            logger.warning(f"Could not close connection")
 
     # ---------------------------
-    # Persistence Control
+    # SCPI Commands
     # ---------------------------
-    def display_persistance_state(self, state="OFF"):
+
+    def _scpi_display_persistance_state(self, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         '''
         Defines whether the waveform persists on the screen or whether 
         the screen is refreshed continuously.
-
-        <state> ON|OFF 
+        
+        Args:
+            <state> ON|OFF 
         '''
 
-        cmd = f"DISPlay:PERSistence:STATe {state}"
         logger.info(f"Settintg persistence state")
-        return self.write(cmd)
-    
 
+        return self.write(f"DISPlay:PERSistence:STATe {state}")
 
-    def display_persistance_time(self, time):
+    def _scpi_display_persistance_time(self, 
+        time
+    ) -> None:
         '''
         Persistence time if persistence is active (please refer to DISPlay:PERSistence:STATe). 
         Each newdata point in the diagram area remains on the screen for the duration defined here. 
         To set infinitepersistence, use DISPlay:PERSistence:INFinite.
 
-        <time> time in seconds
+        Args:
+            <time> time in seconds
         '''
 
-        cmd = f"DISPlay:PERSistence:TIME {time}"
         logger.info(f"Setting time for persistance mode")
-        return self.write(cmd)
+
+        return self.write(f"DISPlay:PERSistence:TIME {time}")
     
-
-
-    def display_persistnace_infinity(self, state="OFF"):
+    def _scpi_display_persistnace_infinity(self,
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         '''
         Sets the persistence time to infinite if DISPlay:PERSistence:STATe is ON. 
         Each new data point remains on the screen infinitely until this setting is 
         changed or the persistence is cleared.
 
-        <state> ON|OFF 
+        Args:
+            <state> ON|OFF 
         '''
+        logger.info(f"Setting persistance to infinity mode")
 
-        cmd = f"DISPlay:PERSistence:INFinite {state}"
-        logger.info(f"Setting persistance mode to infinity")
-        return self.write(cmd)
-    
-
-
-    def display_persistance_clear(self):
+        return self.write(f"DISPlay:PERSistence:INFinite {state}")
+  
+    def _scpi_display_persistance_clear(self) -> None:
         '''
         Removes the displayed persistent waveform from the screen.
         '''
 
-        cmd = "DISPlay:PERSistence:CLEar"
         logger.info(f"Clear persistance trace")
-        return self.write(cmd)
 
+        return self.write(f"DISPlay:PERSistence:CLEar")
 
-
-    # ---------------------------
-    # Channel Control
-    # ---------------------------
-
-    def channel_state(self, channel, state):
+    def _scpi_channel_state(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        state: Literal["ON", "OFF"] = "ON"
+    ) -> None:
         '''
         Switches the channel signal on or off.
         
-        <channel>   1|2|3|4
-        <state>     ON|OFF
+        Args:
+            <channel>   1|2|3|4
+            <state>     ON|OFF
         '''
 
-        cmd = f"CHANnel{channel}:STATe {state}"
         logger.info(f"Switch {channel} {state}")
-        return self.write(cmd)
-    
 
+        return self.write(f"CHANnel{channel}:STATe {state}")
 
-    def channel_coupling(self, channel, coupling):
+    def _scpi_channel_coupling(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        coupling: Literal["AC", "DC"] = "DC"
+    ) -> None:
         '''
         Selects the connection of the indicated channel signal.
 
-        <channel>   1|2|3|4
-        <coupling>  DC|DCLimit|AC|ACLimit|GND
+        Args:
+            <channel>   1|2|3|4
+            <coupling>  AC|DC
         '''
 
-        cmd = f"CHANnel{channel}:COUPling {coupling}"
         logger.info(f"Set channel {channel} to {coupling} coupling")
-        return self.write(cmd)
+
+        return self.write(f"CHANnel{channel}:COUPling {coupling}")
     
-
-
-    def channel_scale(self, channel, scale):
+    def _scpi_channel_scale(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        scale: float = 10
+    ) -> None:
         '''
         Sets the vertical scale for the indicated channel.
         
-        <channel>   1|2|3|4
-        <scale>     1E-3 to 10 V/div
+        Args:
+            <channel>   1|2|3|4
+            <scale>     1E-3 to 10 V/div
         '''
 
         if not (1e-3 <= scale <= 10):
             logger.warning(f"Scale out of limits")
             return
 
-        self._channel_scales[channel] = float(scale)
         logger.info(f"Set channel {channel} to {scale} V/div")
-        cmd = f"CHANnel{channel}:SCALe {scale}"
-        return self.write(cmd)
 
-    def _position_to_divisions(self, channel, position):
-        scale = self._channel_scales.get(channel)
+        self._channel_scales[channel] = scale
 
-        if scale not in (None, 0):
-            return position / scale
+        return self.write(f"CHANnel{channel}:SCALe {scale}")
 
-        return position
+    def _scpi_channel_position(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        position: float = 0
+    ) -> None:
+        '''
+        Sets the position of the channel trace
 
-    def channel_position(self, channel, position):
+        Args:
+            <channel>   1|2|3|4
+            <position>  -5 to 5
+        '''
 
-        divisions = self._position_to_divisions(channel, position)
+        if not (-5 <= position <= 5):
+            logger.warning(f"Scale out of limits")
+            return
 
-        logger.info(
-            f"CH{channel}: Requesting position={position}V -> {divisions}div"
-        )
+        divisions = position/self._channel_scales.get(channel)
 
-        cmd = f"CHANnel{channel}:POSition {divisions}"
-        self.write(cmd)
+        logger.info(f"CH{channel}: Requesting position={position}V -> {divisions}div")
 
-        actual = self.query(
-            f"CHANnel{channel}:POSition?"
-        )
+        self.write(f"CHANnel{channel}:POSition {divisions}")
 
-        logger.info(
-            f"CH{channel}: Scope reports position={actual}"
-        )
-
-    def channel_bandwidth(self, channel, bandwidth):
+    def _scpi_channel_bandwidth(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        bandwidth: Literal["FULL", "20MHz"] = "FULL"
+    ) -> None:
         '''
         Selects the bandwidth limit for the indicated channel.
         
-        <channel>   1|2|3|4
-        <bandwidth>  FULL|B20
+        Args:
+            <channel>   1|2|3|4
+            <bandwidth>  FULL|20MHz
         '''
+
+        if bandwidth == "20MHz": # Mapping
+            bandwidth = "B20"
 
         logger.info(f"Set channel {channel} to bandwidth {bandwidth}")
-        cmd = f"CHANnel{channel}:BANDwidth {bandwidth}"
-        return self.write(cmd)
 
-    def channel_label(self, channel, label):
-        '''
+        return self.write(f"CHANnel{channel}:BANDwidth {bandwidth}")
+
+    def _scpi_channel_label(
+        self,
+        channel: Literal[1, 2, 3, 4] = 1,
+        label: str = ""
+    ) -> None:
+        """
         Set the label for the input channel.
 
-        <channel>   1|2|3|4
-        <label>     String value “xxxxxxxx“ with maximum 8 ASCII characters.
-        '''
+        Args:
+            <channel>   1|2|3|4
+            <label>     String value with maximum 8 ASCII characters.
+        """
 
-        logger.info(f"Set label of channel {channel} to {label}")
-        cmd = f"CHANnel{channel}:LABel {label}"
-        return self.write(cmd)
-    
-    def channel_label_state(self, channel, state):
+        if len(label) > 8:
+            logger.warning(
+                f"Label '{label}' exceeds 8 characters. "
+                f"Truncating to '{label[:8]}'."
+            )
+            label = label[:8]
+
+        logger.info(f"Set label of channel {channel} to '{label}'")
+
+        return self.write(f'CHANnel{channel}:LABel "{label}"')
+
+    def _scpi_channel_label_state(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         '''
         Switches the label of the channel on or off
-        <channel>   1|2|3|4
-        <state>     ON|OFF
+        
+        Args:
+            <channel>   1|2|3|4
+            <state>     ON|OFF
         '''
 
         logger.info(f"Enable label for channel {channel}")
-        cmd = f"CHANnel{channel}:LABel:STATe {state}"
-        return self.write(cmd)
-    
 
+        return self.write(f"CHANnel{channel}:LABel:STATe {state}")
 
-    # ---------------------------
-    # Probe Control
-    # ---------------------------
-
-    def probe_unit(self, channel, unit="V"):
+    def _scpi_probe_unit(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        unit: Literal["V", "A"] = "V"
+    ) -> None:
         '''
         Selects the unit that the probe can measure.
 
-        <channel>   1|2|3|4
-        <unit>      V|A
+        Args:
+            <channel>   1|2|3|4
+            <unit>      V|A
         '''
 
         logger.info(f"Set unit of channel {channel} to {unit}")
-        cmd = f"PROBe{channel}:SETup:ATTenuation:UNIT {unit}"
-        return self.write(cmd)
+
+        return self.write(f"PROBe{channel}:SETup:ATTenuation:UNIT {unit}")
     
-
-
-    def probe_attenuation(self, channel, attenuation=10):
+    def _scpi_probe_attenuation(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        attenuation: float = 10
+    ) -> None:
         '''
         Sets the attenuation or gain of the probe if the probe was not detected by the instrument.
 
-        <channel>   1|2|3|4
-        <unit>      0.001 to 1000
+        Args:
+            <channel>   1|2|3|4
+            <unit>      0.001 to 1000
         '''
-
 
         if not (0.001 <= attenuation <= 1000):
             logger.warning("Attenuation out of limits")
             return
 
-        logger.info(
-            f"Set channel {channel} to attenuation 1:{attenuation}"
-        )
+        logger.info(f"Set channel {channel} to attenuation 1:{attenuation}")
 
-        cmd = (
-            f"PROBe{channel}:SETup:"
-            f"ATTenuation:MANual {attenuation}"
-        )
+        return self.write(f"PROBe{channel}:SETup:ATTenuation:MANual {attenuation}")
 
-        return self.write(cmd)
-
-
-    
-    # ---------------------------
-    # Trigger Control
-    # ---------------------------
-
-    def trigger_mode(self, mode):
+    def _scpi_trigger_mode(self, 
+        mode: Literal["AUTO"] = "AUTO"
+    ) -> None:
         '''
         Sets the trigger mode. The trigger mode determines the behaviour of 
         the instrument if no trigger occurs.
 
-        <mode>  AUTO|NORMal
+        Args:
+            <mode>  AUTO|NORMal
         '''
 
         logger.info(f"Set trigger mode to {mode}")
-        cmd = f"TRIGger:A:MODE {mode}"
-        return self.write(cmd)
 
+        return self.write(f"TRIGger:A:MODE {mode}")
 
+    def _scpi_identify(self) -> str:
+        '''
+        Returns the IDN of the device
 
-    # ---------------------------
-    # Device Control
-    # ---------------------------
-    def identify(self):
-        cmd = "*IDN?"
-        logger.debug(f"Querying ID -> {cmd}")
-        return self.query(cmd)
+        Returns:
+            IDN String
+        '''
+
+        logger.debug(f"Querying ID")
     
+        return self.query("*IDN?")
+    
+    def _scpi_run(self) -> None:
+        '''
+        Sets the scope in run mode
+        '''
 
-
-    # ---------------------------
-    # ACQUIRE CONTROL
-    # ---------------------------
-    def run(self):
-        cmd = ":RUN"
-        logger.debug(f"Starting acquisition -> {cmd}")
-        self.write(cmd)
-
-    def stop(self):
-        cmd = "STOP"
-        logger.debug(f"Stopping acquisition -> {cmd}")
-        self.write(cmd)
-
-    def set_resolution(self, bit="8Bits"):
-        """
-        Set the acquisition resolution to 10-bits or 8-bits.
-        bit: "10bits" or "8bits"
-        """
-        if bit != "8Bits":
-            bit = "AUTO"
-        else:
-            bit = "OFF"
-        cmd = f"ACQuire:HRESolution {bit}"
-        logger.debug(f"Setting acquisition resolution to {bit} -> {cmd}")
-        self.write(cmd)
-
-    # ---------------------------
-    # CHANNEL SETTINGS
-    # ---------------------------
-    def set_channel_bwlimit(self, channel, bw="FULL"):
-        """
-        Set the bandwidth limit for a specific channel.
-        channel: 1, 2, 3, or 4 
-        bw: "FULL" or "B20"
-        """
-        cmd = f"CHANnel{channel}:BANDwidth {bw}"
-        logger.debug(f"Setting bandwidth limit for channel {channel} to {bw} -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_scale(self, channel, volts_per_div):
-        """
-        Set the vertical scale (volts per division) for a specific channel.
-        channel: 1, 2, 3, or 4
-        volts_per_div: float value representing volts per division
-        """
-        return self.channel_scale(channel, volts_per_div)
-
-    def set_channel_offset(self, channel, offset):
-        """
-        Set the vertical offset for a specific channel.
-        channel: 1, 2, 3, or 4
-        offset: float value representing the offset
-        """
-        divisions = self._position_to_divisions(channel, offset)
-        cmd = f"CHANnel{channel}:POSition {divisions}"
-        logger.debug(f"Setting vertical offset for channel {channel} to {offset} V -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_enable(self, channel, state=True):
-        cmd = f"CHANnel{channel}:STATe {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting channel {channel} enable state to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_coupling(self, channel, coupling="DC"):
-        """
-        Set the coupling mode for a specific channel.
-        channel: 1, 2, 3, or 4
-        coupling: "DC" or "AC"
-        """
-        cmd = f"CHANnel{channel}:COUPling {coupling}"
-        logger.debug(f"Setting coupling mode for channel {channel} to {coupling} -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_label_on_off(self, channel, state=False):
-        cmd = f"CHANnel{channel}:LABel:STATe {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting label visibility for channel {channel} to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_label_text(self, channel, text):
-        """
-        Set the label text for a specific channel.
-        channel: 1, 2, 3, or 4
-        text: string value representing the label text
-        """
-
-        if len(text) > 8:
-            logger.warning(
-                f"Label '{text}' exceeds 8 characters. "
-                f"Truncating to '{text[:8]}'."
-            )
-            text = text[:8]
-
-        cmd = f'CHANnel{channel}:LABel "{text}"'
-
-        logger.debug(
-            f"Setting label text for channel {channel} "
-            f"to '{text}' -> {cmd}"
-        )
-
-        self.write(cmd)
-
-
-    def set_channel_unit(self, channel, unit="V"):
-        """
-        Set the unit for a specific channel.
-        channel: 1, 2, 3, or 4
-        unit: "V" or "A"
-        """
-        cmd = f"PROBe{channel}:SETup:ATTenuation:UNIT {unit}"
-        logger.debug(f"Setting unit for channel {channel} to {unit} -> {cmd}")
-        self.write(cmd)
-
-    def set_channel_attenuation(self, channel, attenuation):
-        """
-        Set the attenuation for a specific channel.
-        channel: 1, 2, 3, or 4
-        attenuation: float value representing the attenuation
-        """
-        attenuation_nr3 = f"{attenuation:.6E}"
-
-        cmd = f"PROBe{channel}:SETup:ATTenuation:MANual {attenuation_nr3}"
+        logger.debug(f"Starting acquisition")
         
-        logger.debug(
-            f"Setting attenuation for channel {channel} to {attenuation} "
-            f"(NR3: {attenuation_nr3}) -> {cmd}"
-        )
+        self.write(":RUN")
 
-        self.write(cmd)
+    def _scpi_stop(self) -> None:
+        '''
+        Sets the scope to stop mode
+        '''
 
+        logger.debug(f"Stopping acquisition")
 
+        self.write("STOP")
 
-    # ---------------------------
-    # TIMEBASE
-    # ---------------------------
-    def set_timebase(self, sec_per_div):
-        cmd = f":TIMebase:SCALe {sec_per_div}"
-        logger.debug(f"Setting timebase to {sec_per_div} s/div -> {cmd}")
-        self.write(cmd)
+    def _scpi_set_resolution(self, 
+        bit: Literal[8, 16] = 16
+    ) -> None:
+        """
+        Set the acquisition resolution to AUTO or OFF
+        For the HMO it is a native 8 Bit scope, but can scale up to 16
+        
+        Args:
+            <bit>       Desired bitrate
+        
+        """
 
+        if bit == 8: # Mapping    
+            bit_HMO = "OFF"
+        else:
+            bit_HMO = "AUTO"
+        
+        logger.debug(f"Setting acquisition resolution to {bit}")
 
+        self.write(cmd = f"ACQuire:HRESolution {bit_HMO}")
 
-    # ---------------------------
-    # TRIGGER
-    # ---------------------------
-    def set_trigger_edge(self, channel, level=0.0):
-        cmd = f"TRIGger:A:LEVel{channel} {level}"
-        logger.debug(f"Setting trigger edge level to {level} V -> {cmd}")
-        self.write(cmd)
+    def _scpi_set_timebase(self, 
+        sec_per_div: float
+    ) -> None:
+        """
+        Set the timebase to the desired setting
+        1E-9 to 50
+        """
 
+        if not (1E-9 <= sec_per_div <= 50):
+            logger.warning("Timebase out of limits")
+            return
 
+        logger.debug(f"Setting timebase to {sec_per_div} s/div")
 
-#ab hier... im handbuch seite 99 für statistiks
-    # ---------------------------
-    # MEASUREMENT  
-    # ---------------------------
+        self.write(f"TIMebase:SCALe {sec_per_div}")
 
-    def measure_statistics_on_off(self, position: int, state: bool=True):
+    def _scpi_set_trigger_edge(self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        level: float=0.0
+    ) -> None:
+        """
+        Sets trigger level. Level depends on the scale.
+        So take care of the corret level
+        """
+
+        logger.debug(f"Setting trigger edge level to {level} V")
+
+        self.write(f"TRIGger:A:LEVel{channel} {level}")
+
+    def measure_statistics_on_off(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1, 
+        state: bool=False):
         """
         Enable or disable measurement statistics on the oscilloscope.
         state: True to enable, False to disable
