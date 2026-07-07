@@ -30,6 +30,10 @@ class RIGOL_DMM800:
         self.inst = self.rm.open_resource(resource)
         self.inst.timeout = 5000
 
+        self.mode = "V"
+        self.range = 1000
+        self.speed = "MEDIUM"
+
     # ---------------------------
     # Basic Commands
     # ---------------------------
@@ -103,7 +107,67 @@ class RIGOL_DMM800:
             logger.info(f"Querying number of data points in measurement buffer")
             return self.query(cmd)
         except:
-            logger.warning(f"Failure with command -> {cmd}")       
+            logger.warning(f"Failure with command -> {cmd}")
+
+    def _parse_values(self, response):
+        if response is None:
+            return []
+
+        if isinstance(response, bytes):
+            response = response.decode("ascii", errors="ignore")
+
+        response = str(response).strip()
+
+        if not response:
+            return []
+
+        if response.startswith("#"):
+            digits = int(response[1])
+            header_len = 2 + digits
+            payload_len = int(response[2:header_len])
+            response = response[header_len:header_len + payload_len]
+
+        return [float(v) for v in response.split(",") if v.strip()]
+
+    def fetch_single(self) -> float:
+        '''
+        Compatibility wrapper for the OWON-style single-sample API.
+        '''
+
+        try:
+            response = self.query("READ?")
+            values = self._parse_values(response)
+            if values:
+                return values[0]
+        except Exception as exc:
+            logger.warning(f"Failure fetching single value: {exc}")
+
+        response = self.query("FETCh?")
+        values = self._parse_values(response)
+        if not values:
+            raise ValueError("No measurement values received from Rigol DMM")
+
+        return values[-1]
+
+    def fetch_storage(self, samples: int = 200):
+        '''
+        Compatibility wrapper for the OWON-style buffered sampling API.
+        '''
+
+        try:
+            response = self.query(f"R? {samples}")
+        except Exception as exc:
+            logger.warning(f"Failure fetching buffered values: {exc}")
+            response = self.query("FETCh?")
+
+        values = self._parse_values(response)
+        if not values:
+            raise ValueError("No measurement values received from Rigol DMM")
+
+        if len(values) > samples:
+            return values[:samples]
+
+        return values
 
     def fetch(self):
         '''
@@ -546,4 +610,151 @@ class RIGOL_DMM800:
             nominal_value=voltage_norm,
             min_limit=voltage_min,
             max_limit=voltage_max,
+        )
+    
+    def setup(
+            self,
+            mode: str = "V",
+            range: float = 230,
+            speed: str = "HIGH",
+        ) -> None:
+            """
+            Configure the Rigol DMM.
+
+            Args:
+                mode:   V or A
+                range:  Expected maximum measurement value
+                speed:  LOW, MID or HIGH
+            """
+
+            mode = mode.upper()
+            speed = speed.upper()
+
+            speed_map = {
+                "LOW": "SLOW",
+                "MID": "MEDIUM",
+                "HIGH": "FAST",
+            }
+
+            if speed not in speed_map:
+                raise ValueError(
+                    f"Unsupported speed '{speed}'. "
+                    "Use LOW, MID or HIGH."
+                )
+
+            rigol_speed = speed_map[speed]
+
+            if mode == "V":
+
+                range_val = self.get_voltage_range(range)
+
+                numeric_range = {
+                    "100mV": 0.1,
+                    "1V": 1,
+                    "10V": 10,
+                    "100V": 100,
+                    "1000V": 1000,
+                }[range_val]
+
+                resolution = (
+                    numeric_range *
+                    ppm_map[rigol_speed]
+                )
+
+                self.configure_voltage_dc(
+                    range_val,
+                    "DEF",
+                    f"{resolution:.6E}"
+                )
+
+            elif mode == "A":
+
+                logger.warning(
+                    "Current mode setup not yet implemented."
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported mode '{mode}'. "
+                    "Use V or A."
+                )
+
+            self.mode = mode
+            self.range = range
+            self.speed = speed
+
+            logger.info(
+                f"DMM configured: "
+                f"mode={mode}, "
+                f"range={range}, "
+                f"speed={speed}"
+            )
+
+    def set_display(self) -> None:
+        """
+        Compatibility wrapper for the OWON display-control API.
+        """
+        logger.info("Rigol DMM display control is not exposed via this adapter")
+
+    def get_screenshot(
+        self,
+        folder: str = "measurements",
+        prefix: str = "",
+        label: str = "",
+    ):
+        """
+        Compatibility wrapper for the OWON screenshot API.
+        """
+        filename = prefix or label or "DMM"
+        return self.hcopy_sdump_data_dump(
+            filename=filename,
+            folder=folder,
+            format="PNG",
+        )
+
+    def get_plot(
+        self,
+        title: str,
+        y_label: str,
+        suffix: str = "",
+        nominal_value: float = 0.0,
+        min_limit: float = 0.0,
+        max_limit: float = 0.0,
+        limit: int = 200,
+    ):
+        """
+        Compatibility wrapper for OWON API.
+        """
+
+        timestamp = (
+            suffix
+            if suffix
+            else datetime.datetime.now().strftime(
+                "%Y%m%d_%H%M%S"
+            )
+        )
+
+        try:
+            values = self.fetch_storage(samples=limit)
+        except Exception as exc:
+            logger.warning(f"Failed to read DMM data buffer: {exc}")
+            return None
+
+        logger.info(
+            f"Parsed {len(values)} samples"
+        )
+
+        if not values:
+            return None
+
+        return plot_data(
+            x_data=list(range(len(values))),
+            y_data=values,
+            title=title,
+            y_label=y_label,
+            suffix=timestamp,
+            unit=self.mode,
+            nominal_value=nominal_value,
+            min_limit=min_limit,
+            max_limit=max_limit,
         )

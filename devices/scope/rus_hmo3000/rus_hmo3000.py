@@ -14,6 +14,7 @@ class RUS_HMO3000:
         self.rm = pyvisa.ResourceManager()
         self.inst = self.rm.open_resource(resource)
         self.inst.timeout = 5000
+        self._channel_scales = {}
 
         # SCPI empfohlen: kurze Headers deaktivieren/aktivieren je nach Bedarf
         self.write("CHDR SHORT")
@@ -66,7 +67,7 @@ class RUS_HMO3000:
         <time> time in seconds
         '''
 
-        cmd = "DISPlay:PERSistence:TIME {time}"
+        cmd = f"DISPlay:PERSistence:TIME {time}"
         logger.info(f"Setting time for persistance mode")
         return self.write(cmd)
     
@@ -138,34 +139,41 @@ class RUS_HMO3000:
         <scale>     1E-3 to 10 V/div
         '''
 
-        if 1e-3 < scale > 10:
+        if not (1e-3 <= scale <= 10):
             logger.warning(f"Scale out of limits")
             return
-        else:
-            logger.info(f"Set channel {channel} to {scale} V/div")
-            cmd = f"CHANnel{channel}:SCALe {scale}"
-            return self.write(cmd)
 
+        self._channel_scales[channel] = float(scale)
+        logger.info(f"Set channel {channel} to {scale} V/div")
+        cmd = f"CHANnel{channel}:SCALe {scale}"
+        return self.write(cmd)
 
+    def _position_to_divisions(self, channel, position):
+        scale = self._channel_scales.get(channel)
+
+        if scale not in (None, 0):
+            return position / scale
+
+        return position
 
     def channel_position(self, channel, position):
-        '''
-        Sets the vertical position of the indicated channel and its 
-        horizontal axis in the window.
 
-        <channel>   1|2|3|4
-        <position>  -5 to 5
-        '''
+        divisions = self._position_to_divisions(channel, position)
 
-        if -5 < position > 5:
-            logger.warning(f"Position out of limits")
-            return
-        else:
-            logger.info(f"Set channel {channel} to position {position} div")
-            cmd = f"CHANnel{channel}:POSition {position}"
-            return self.write(cmd)
+        logger.info(
+            f"CH{channel}: Requesting position={position}V -> {divisions}div"
+        )
 
+        cmd = f"CHANnel{channel}:POSition {divisions}"
+        self.write(cmd)
 
+        actual = self.query(
+            f"CHANnel{channel}:POSition?"
+        )
+
+        logger.info(
+            f"CH{channel}: Scope reports position={actual}"
+        )
 
     def channel_bandwidth(self, channel, bandwidth):
         '''
@@ -230,16 +238,24 @@ class RUS_HMO3000:
         <unit>      0.001 to 1000
         '''
 
-        if 0.001 <= attenuation <= 1000:
-            logger.warning(f"Attenuation out of limits")
+
+        if not (0.001 <= attenuation <= 1000):
+            logger.warning("Attenuation out of limits")
             return
-        else:
-            logger.info(f"Set channel {channel} to attenuation 1:{attenuation}")
-            cmd = f"PROBe{channel}:SETup:ATTenuation:MANual {attenuation}"
-            return self.write(cmd)
+
+        logger.info(
+            f"Set channel {channel} to attenuation 1:{attenuation}"
+        )
+
+        cmd = (
+            f"PROBe{channel}:SETup:"
+            f"ATTenuation:MANual {attenuation}"
+        )
+
+        return self.write(cmd)
+
 
     
-
     # ---------------------------
     # Trigger Control
     # ---------------------------
@@ -313,9 +329,7 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         volts_per_div: float value representing volts per division
         """
-        cmd = f"CHANnel{channel}:SCALe {volts_per_div}"
-        logger.debug(f"Setting vertical scale for channel {channel} to {volts_per_div} V/div -> {cmd}")
-        self.write(cmd)
+        return self.channel_scale(channel, volts_per_div)
 
     def set_channel_offset(self, channel, offset):
         """
@@ -323,7 +337,8 @@ class RUS_HMO3000:
         channel: 1, 2, 3, or 4
         offset: float value representing the offset
         """
-        cmd = f"CHANnel{channel}:POSition {offset}"
+        divisions = self._position_to_divisions(channel, offset)
+        cmd = f"CHANnel{channel}:POSition {divisions}"
         logger.debug(f"Setting vertical offset for channel {channel} to {offset} V -> {cmd}")
         self.write(cmd)
 
@@ -351,11 +366,25 @@ class RUS_HMO3000:
         """
         Set the label text for a specific channel.
         channel: 1, 2, 3, or 4
-        text: string value representing the label text 
+        text: string value representing the label text
         """
-        cmd = f'CHANnel{channel}:LABel:TEXT "{text}"'
-        logger.debug(f"Setting label text for channel {channel} to '{text}' -> {cmd}")
+
+        if len(text) > 8:
+            logger.warning(
+                f"Label '{text}' exceeds 8 characters. "
+                f"Truncating to '{text[:8]}'."
+            )
+            text = text[:8]
+
+        cmd = f'CHANnel{channel}:LABel "{text}"'
+
+        logger.debug(
+            f"Setting label text for channel {channel} "
+            f"to '{text}' -> {cmd}"
+        )
+
         self.write(cmd)
+
 
     def set_channel_unit(self, channel, unit="V"):
         """
@@ -400,9 +429,10 @@ class RUS_HMO3000:
     # TRIGGER
     # ---------------------------
     def set_trigger_edge(self, channel, level=0.0):
-        cmd = f":TRIGger:A:LEVelE:LEVel{channel}[:VALue] {level}"
+        cmd = f"TRIGger:A:LEVel{channel} {level}"
         logger.debug(f"Setting trigger edge level to {level} V -> {cmd}")
         self.write(cmd)
+
 
 
 #ab hier... im handbuch seite 99 für statistiks
@@ -415,27 +445,40 @@ class RUS_HMO3000:
         Enable or disable measurement statistics on the oscilloscope.
         state: True to enable, False to disable
         """
-        cmd = f"MEASurement{position}:STATistics[:ENABle] {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting measurement position {position} statistics to {'ON' if state else 'OFF'} -> {cmd}")
+
+        cmd = (
+            f"MEASurement{position}:STATistics:ENABle "
+            f"{'ON' if state else 'OFF'}"
+        )
+        logger.debug(
+            f"Setting measurement position {position} statistics "
+            f"to {'ON' if state else 'OFF'} -> {cmd}"
+        )
         self.write(cmd)
 
+
     def measure_statistics_reset(self, position: int):
-        cmd = "MEASurement{position}:STATistics:RESet"
-        logger.debug(f"Resetting measurement statistics on Siglent SDS oscilloscope -> {cmd}")
+        cmd = f"MEASurement{position}:STATistics:RESet"
+        logger.debug(f"Resetting measurement statistics -> {cmd}")
         self.write(cmd)
 
     def get_count(self, position: int):
-        cmd = "MEASurement{position}:RESult:WFMCount? [<WaveformCount>]"
+        cmd = f"MEASurement{position}:RESult:WFMCount?"
         logger.debug(f"Getting count -> {cmd}")
-        self.query(cmd)       
+        return float(self.query(cmd))       
         
-    def measure_enable(self, position:int, state: bool = True):
-        cmd = f"MEASurement{position}[:ENABle] {state}"
-        logger.debug("Activationg measurment at position {position}")
+    def measure_enable(self, position: int, state: bool = True):
+        cmd = (
+            f"MEASurement{position}:ENABle "
+            f"{'ON' if state else 'OFF'}"
+        )
+        logger.debug(
+            f"Activating measurement at position {position}"
+        )
         self.write(cmd)
 
-    def measurment_source(self, position: int, source:int):
-        cmd = f"MEASurment{position}:CH{source}"
+    def measurment_source(self, position: int, source: int):
+        cmd = f"MEASurement{position}:SOURce CH{source}"
         logger.debug(f"Setting position {position} to channel {source}")
         self.write(cmd)
 
@@ -450,18 +493,15 @@ class RUS_HMO3000:
             NPWidth | CYCMean | CYCRms | STDDev | TFRequency | TPERiode |
             POVershoot | NOVershoot | DELay | PHASe
         """
+        if parameter == "MIN":
+            parameter = "LPEakvalue"
+        if parameter == "MAX":
+            parameter = "UPEakvalue"
+        if parameter == "PKPK":
+            parameter = "PEAK"
+    
         cmd = f":MEASurement{position}:MAIN {parameter}"
         logger.debug(f"Measuring {parameter} on channel {position} -> {cmd}")
-        return self.write(cmd)
-
-    def measure_source1(self, position, source):
-        """
-        Measure a specific source on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        source: "C1", "C2", "C3", "C4", "MATH", "REF1", "REF2", "REF3", "REF4"
-        """
-        cmd = f":MEASure:ADVanced:P{position}:SOURce1 {source}"
-        logger.debug(f"Measuring source {source} on channel {position} -> {cmd}")
         return self.write(cmd)
 
     def measure_on_off(self, position, state=True):
@@ -490,7 +530,7 @@ class RUS_HMO3000:
 
         self.channel_state(
             channel=channel,
-            state=enable
+            state="ON" if enable else "OFF"
         )
         
         if enable == False:
@@ -507,9 +547,15 @@ class RUS_HMO3000:
         )
 
         if label == "":
-            self.set_channel_label_on_off(False)
+            self.set_channel_label_on_off(
+                channel=channel,
+                state=False
+            )
         else:
-            self.set_channel_label_on_off(True)
+            self.set_channel_label_on_off(
+                channel=channel,
+                state=True
+            )
 
             self.set_channel_label_text(
                 channel=channel,
@@ -542,12 +588,222 @@ class RUS_HMO3000:
             mode:str,
             level:float,
     ):
-        self.trigger_mode(
-            mode=mode
-        )
+        if mode:
+            self.trigger_mode(
+                mode=mode
+            )
 
         self.set_trigger_edge(
             channel=channel,
             level=level
         )
 
+    def reset(self):
+        """
+        Clears persistence,
+        statistics and measurements.
+        """
+
+        # Disable all channels
+        for i in range(1, 5):
+            self.channel_state(
+                channel=i,
+                state="OFF"
+            )
+
+        # Disable measurement slots
+        for i in range(1, 6):
+
+            try:
+                self.measure_enable(
+                    position=i,
+                    state=False
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to disable measurement {i}: {e}"
+                )
+
+            try:
+                self.measure_statistics_on_off(
+                    position=i,
+                    state=False
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to disable statistics {i}: {e}"
+                )
+
+        # Clear statistics
+        for i in range(1, 6):
+            try:
+                self.measure_statistics_reset(
+                    position=i
+                )
+            except Exception:
+                pass
+
+        # Clear persistence traces
+        self.display_persistance_clear()
+
+        # Disable persistence mode completely
+        self.display_persistance_state(
+            state="OFF"
+        )
+
+        time.sleep(2)
+
+    def set_persistence(
+        self,
+        duration: float,
+    ):
+        """
+        Enables display persistence.
+
+        Args:
+            duration:
+                0 = OFF
+                >0 = persistence time in seconds
+                <0 = infinite persistence
+        """
+
+        if duration == 0:
+
+            self.display_persistance_state(
+                state="OFF"
+            )
+
+        else:
+
+            self.display_persistance_state(
+                state="ON"
+            )
+
+            if duration < 0:
+
+                self.display_persistnace_infinity(
+                    state="ON"
+                )
+
+            else:
+
+                self.display_persistnace_infinity(
+                    state="OFF"
+                )
+
+                self.display_persistance_time(
+                    time=duration
+                )
+
+    def set_measurement(
+        self,
+        position: int,
+        channel: int,
+        measurement_type: str,
+    ):
+        """
+        Adds a measurement to the screen.
+
+        Args:
+            position: Measurement slot.
+            channel: Channel number (1..4)
+            measurement_type:
+                OFF
+                FREQuency
+                PERiod
+                HIGH
+                LOW
+                AMPLitude
+                RMS
+                MEAN
+                STDDev
+                ...
+        """
+
+        if measurement_type == "OFF":
+
+            self.measure_enable(
+                position=position,
+                state=False
+            )
+
+            self.measure_statistics_on_off(
+                position=position,
+                state=False
+            )
+
+        else:
+
+            self.measure_enable(
+                position=position,
+                state=True
+            )
+
+            self.measure_statistics_on_off(
+                position=position,
+                state=True
+            )
+
+            self.measurment_source(
+                position=position,
+                source=channel
+            )
+
+            self.measure_item(
+                position=position,
+                parameter=measurement_type
+            )
+
+    def save_screenshot(self, filename: str, suffix: str = "") -> None:
+        """
+        Save screenshot from HMO3000 oscilloscope.
+        """
+
+        logger.debug(
+            "Saving screenshot from HMO3000 oscilloscope -> HCOPy:DATA?"
+        )
+
+        try:
+            self.stop()
+            time.sleep(0.5)
+
+            result = self.inst.query_binary_values(
+                "HCOPy:DATA?",
+                datatype="B",
+                container=bytearray
+            )
+
+            logger.debug(
+                f"Received {len(result)} bytes from oscilloscope"
+            )
+
+            logger.debug(
+                f"Image starts with: {bytes(result[:16])}"
+            )
+
+            timestamp = datetime.datetime.now().strftime(
+                "%Y%m%d_%H%M%S"
+            )
+
+            file_path = os.path.join(
+                "measurements",
+                f"{filename}_SCOPE_{suffix}.bmp"
+            )
+
+            with open(file_path, "wb") as fp:
+                fp.write(result)
+
+            logger.debug(
+                f"Screenshot saved to {file_path}"
+            )
+
+        except Exception as ex:
+            logger.exception(
+                f"Failed to save screenshot: {ex}"
+            )
+
+    def persistence_clear(self):
+        """
+        Clears the persistence traces from the display.
+        """
+        self.display_persistance_clear()

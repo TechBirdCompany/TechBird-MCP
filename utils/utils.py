@@ -289,14 +289,14 @@ def plot_data(
 
     plt.tight_layout()
 
-    os.makedirs("measurements", exist_ok=True)
+    output_dir = get_folder()
+    os.makedirs(output_dir, exist_ok=True)
 
-    
     filename = f"{title}_{suffix}".strip("_")
     filename = filename.replace(" ", "_")
 
     path = os.path.join(
-        "measurements",
+        output_dir,
         f"{filename}.png",
     )
 

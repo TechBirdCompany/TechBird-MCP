@@ -119,3 +119,10 @@ class scope(Protocol):
         """
         Returns the count of said position
         """
+        ...
+
+    def persistence_clear(self):
+        """
+        Clears the persistence traces from the display.
+        """
+        ...

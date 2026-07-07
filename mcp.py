@@ -11,17 +11,18 @@ from testcases.loadtest import load_test
 import time
 from loguru import logger
 
+
 def main():
 
-    scope = Siglent_SDS2000(
-        "TCPIP0::10.10.10.90::INSTR"
-    )
+    #scope = Siglent_SDS2000("TCPIP0::10.10.10.90::INSTR")
+    scope = RUS_HMO3000("TCPIP0::192.168.1.59::INSTR")
 
-    dmm = OWON_XDM1000()
+    #dmm = OWON_XDM1000()
+    dmm = RIGOL_DMM800("TCPIP0::192.168.1.38::INSTR")
 
-    eload = EastTester_ET54.auto_connect()
-    #eload = PeakTech_2275.auto_connect()
-    
+    #eload = EastTester_ET54.auto_connect()
+    eload = PeakTech_2275.auto_connect()
+
     load_test(
         scope=scope,
         dmm=dmm,
@@ -31,7 +32,7 @@ def main():
         min_voltage=4.95,
         domain="VCC5V0",
         current=0.5,
-        single=False
+        single=True
     )
 
 if __name__ == "__main__":

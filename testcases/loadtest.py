@@ -222,8 +222,12 @@ def load_test(
         )
 
         scope.set_persistence(  # Set peristance mode
-            duration=10,
+            duration=-1,
         )
+
+        time.sleep(5)
+
+        scope.persistence_clear() # Clear persistance traces
 
         scope.run() # Set Scope to run mode
 
