@@ -15,52 +15,98 @@ class Siglent_SDS2000:
         self.inst = self.rm.open_resource(resource)
         self.inst.timeout = 5000
 
-        # SCPI empfohlen: kurze Headers deaktivieren/aktivieren je nach Bedarf
         self.write("CHDR SHORT")
 
     # ---------------------------
     # BASIC COMMUNICATION
     # ---------------------------
     def write(self, cmd):
-        self.inst.write(cmd)
+        try:
+            self.inst.write(cmd)
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
 
     def query(self, cmd):
-        return self.inst.query(cmd).strip()
+        try:
+            return self.inst.query(cmd).strip()
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
 
     def close(self):
         cmd = "CLOSE"
-        logger.debug(f"Closing connection to Siglent SDS oscilloscope -> {cmd}")
-        self.inst.close()
+        try:
+            self.inst.close()
+        except:
+            logger.warning(f"Could not close connection")
 
     # ---------------------------
-    # BASIC FUNCTIONS
+    # SCPI Commands
     # ---------------------------
-    def display_hide_menu(self):
-        cmd = ":DISPlay:HIDemenu"
-        logger.debug(f"Hiding menu on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
+    def _scpi_display_hide_menu(self) -> None:
+        """
+        Hides menu
+        """
 
-    def display_clear(self):
-        cmd = ":DISPlay:CLEar"
-        logger.debug(f"Clearing display on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
+        logger.debug(f"Hiding menu")
 
-    def display_persistance(self, duration="OFF"):
+        self.write(F":DISPlay:HIDemenu")
+
+    def _scpi_display_clear(self) -> None:
+        """
+        Clears Display
+        """
+
+        logger.debug(f"Clearing display")
+
+        self.write(":DISPlay:CLEar")
+
+    def _scpi_display_persistance(self, 
+        duration: float
+    ) -> None:
         """
         Set the display persistence duration.
-        duration: "OFF", "INFinite", "1S", "5S", "10S", "30S"
-        Pay attention to the corret writing of INFinite, otherwise the command will not be accepted by the device.
+        Internal settings which need to be mapped "OFF", "INFinite", "1S", "5S", "10S", "30S" 
+        Pay attention to the corret writing of INFinite, otherwise the command
+
+        Args:
+            <duration>  Time in Seconds
+                        0 is OFF
+                        -1 is infinite
         """
-        cmd = f":DISPlay:PERSistence {duration}"
-        logger.debug(f"Setting display persistence to {duration} -> {cmd}")
-        self.write(cmd)
+
+        if duration == 0:
+            duration = "OFF"
+        elif duration == -1:
+            duration = "INFinite"
+        else:
+            allowed = [1, 5, 10, 30]
 
 
-    def save_screenshot(self, filename=None, suffix=None):
-        cmd = "PRIN? BMP"
-        logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
+            nearest = min(allowed, key=lambda x: abs(x - duration))
+
+            if nearest != duration:
+                logger.warning(
+                    f"Unsupported persistence {duration}s. "
+                    f"Using nearest supported value: {nearest}s."
+                )
+
+            duration = f"{nearest}S"
+
+        logger.debug(f"Setting display persistence to {duration}")
+        self.write(f":DISPlay:PERSistence {duration}")
+
+    def _scpi_save_screenshot(self, 
+        filename:str, 
+        suffix:str
+    ) -> None:
+        """
+        Saves screenshot
         
-        self.display_hide_menu()
+        """
+
+        logger.debug(f"Saving screenshot from Siglent SDS oscilloscope")
+        
+        self._scpi_display_hide_menu()
     
         os.makedirs("measurements", exist_ok=True)
 
@@ -73,15 +119,12 @@ class Siglent_SDS2000:
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
-        self.write(cmd)
+        self.write("PRIN? BMP")
+
         data = self.inst.read_raw()
 
         with open(path, "wb") as f:
             f.write(data)
-
-        return path
-
-
 
     # ---------------------------
     # IDENTIFICATION

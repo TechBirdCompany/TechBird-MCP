@@ -1,4 +1,5 @@
 from typing import Protocol
+from typing import Literal
 
 class scope(Protocol):
 
@@ -21,7 +22,7 @@ class scope(Protocol):
         Configure acquisition resolution.
 
         Args:
-            bit:    Number of Bits. Function should be implemented in a way,
+            <bit>   Number of Bits. Function should be implemented in a way,
                     that the more matching bitrate is set.
                     i.E. bit=12 with an Siglent SDS2000X-Plus should result 
                     in a 10.Bit mode
@@ -31,46 +32,46 @@ class scope(Protocol):
 
     def set_channel(
         self,
-        channel: int,
-        enable: bool,
-        attenuation: float,
-        unit: str,
-        label: str,
-        coupling: str,
-        bandwidth_limit: str,
-        volts_per_div: float,
-        position: float,
+        channel: Literal[1, 2, 3, 4] = 1,
+        enable: Literal["ON", "OFF"] = "ON",
+        attenuation: float = 10,
+        unit: Literal["V", "A"] = "V",
+        label: str = "",
+        coupling: Literal["AC", "DC"] = "DC",
+        bandwidth_limit: Literal["FULL", "20MHz"] = "FULL",
+        volts_per_div: float = 5,
+        position: float = 0,
     ) -> None:
         """
         Configures the channel
 
         Args:
-            channel:            Channel 1 to 4
+            <channel>           Channel 1 to 4
                                 With a 2 CH Scope there should be a warning when
                                 channel > 2 and abort the test
                                 [1|2|3|4]
 
-            enable:             Enables channel
+            <enable>            Enables channel
 
-            attenuation:        Atennuation of the channel
+            <attenuation>       Atennuation of the channel
 
-            unit:               Unit of the channel
+            <unit>              Unit of the channel
                                 [V|A]
 
-            label:              Label of the channel
+            <label>             Label of the channel
                                 Function should take the max length into account
                                 If label is to long, it should generate a warning and limit
                                 the label to a matching length
 
-            coupling:           Coupling of channel
+            <coupling>          Coupling of channel
                                 [AC|DC]
 
-            bandwidth_limit:    Sets the bandwidth limit
+            <bandwidth_limit>   Sets the bandwidth limit
                                 [FULL|20MHz]
 
-            volts_per_div:      Sets the vertical scale as volts per devision... even with current
+            <volts_per_div>    Sets the vertical scale as volts per devision... even with current
 
-            position:           Position of the channel
+            <position>          Position of the channel
         """
         ...
 
@@ -132,9 +133,9 @@ class scope(Protocol):
 
     def set_measurement(
         self,
-        position: int,
-        channel: int,
-        measurement_type: str,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: Literal[1, 2, 3, 4] = 1,
+        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF",
     ) -> None:
         """
         Configure measurement slot.
@@ -154,7 +155,7 @@ class scope(Protocol):
         self,
         filename: str,
         suffix: str,
-    ) -> str:
+    ) -> None:
         """
         Save screenshot and return path.
 
@@ -162,9 +163,6 @@ class scope(Protocol):
             filename:   Filename of the screenshot
 
             suffix:     Additional suffix to unify with other screesnhots or so
-
-        Returns:
-            I don't know... maybe the path... can be removed with later revisions
         """
         ...
 

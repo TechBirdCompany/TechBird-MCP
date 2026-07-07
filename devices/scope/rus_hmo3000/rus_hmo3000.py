@@ -77,7 +77,7 @@ class RUS_HMO3000:
 
         return self.write(f"DISPlay:PERSistence:TIME {time}")
     
-    def _scpi_display_persistnace_infinity(self,
+    def _scpi_display_persistance_infinity(self,
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
         '''
@@ -367,146 +367,191 @@ class RUS_HMO3000:
 
         self.write(f"TRIGger:A:LEVel{channel} {level}")
 
-    def measure_statistics_on_off(self, 
+    def _scpi_measure_statistics_on_off(self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
-        state: bool=False):
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         """
         Enable or disable measurement statistics on the oscilloscope.
-        state: True to enable, False to disable
+
+        Args:
+            <position>  1 to 6
+            <state>     ON|OFF
         """
 
-        cmd = (
-            f"MEASurement{position}:STATistics:ENABle "
-            f"{'ON' if state else 'OFF'}"
-        )
-        logger.debug(
-            f"Setting measurement position {position} statistics "
-            f"to {'ON' if state else 'OFF'} -> {cmd}"
-        )
-        self.write(cmd)
+        logger.debug(f"Setting measurement position {position} statistics to {state}")
 
+        self.write(f"MEASurement{position}:STATistics:ENABle {state}")
 
-    def measure_statistics_reset(self, position: int):
-        cmd = f"MEASurement{position}:STATistics:RESet"
-        logger.debug(f"Resetting measurement statistics -> {cmd}")
-        self.write(cmd)
+    def _scpi_measure_statistics_reset(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> None:
+        """
+        Resets the statistic of given slot
 
-    def get_count(self, position: int):
-        cmd = f"MEASurement{position}:RESult:WFMCount?"
-        logger.debug(f"Getting count -> {cmd}")
-        return float(self.query(cmd))       
+        Args:
+            <position>  1 to 6
+        """
+
+        logger.debug(f"Resetting measurement statistics on Position {position}")
+
+        self.write(f"MEASurement{position}:STATistics:RESet")
+
+    def _scpi_get_count(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> int:
+        """
+        Get count of measurment at given position
         
-    def measure_enable(self, position: int, state: bool = True):
-        cmd = (
-            f"MEASurement{position}:ENABle "
-            f"{'ON' if state else 'OFF'}"
-        )
-        logger.debug(
-            f"Activating measurement at position {position}"
-        )
-        self.write(cmd)
+        Args:
+            <position>  1 to 6
+        
+        Returns:
+            Counter of position 
+        """
 
-    def measurment_source(self, position: int, source: int):
-        cmd = f"MEASurement{position}:SOURce CH{source}"
+        logger.debug(f"Getting count of position {position}")
+
+        return int(self.query(f"MEASurement{position}:RESult:WFMCount?"))       
+        
+    def _scpi_measure_enable(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Enable measurment on given position
+        
+        Args:
+            <position>  1 to 6
+            <state>     ON|OFF
+        """
+
+        logger.debug(f"Activating measurement at position {position}")
+
+        self.write(f"MEASurement{position}:ENABle {state}")
+
+    def _scpi_measurment_source(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1, 
+        source: Literal[1, 2, 3, 4] = 1
+    ) -> None:
+        """
+        Changes the source of the measurment at the given position
+
+        Args:
+            <position>  Position of the measurment
+            <source>    Channel for the measurment
+        """
+        
         logger.debug(f"Setting position {position} to channel {source}")
-        self.write(cmd)
 
-    def measure_item(self, position, parameter):
+        self.write(f"MEASurement{position}:SOURce CH{source}")
+
+    def _scpi_measure_item(self, 
+        position: Literal[1, 2, 3, 4, 5, 6] = 1, 
+        parameter: Literal["MIN", "MAX", "PKPK", "RMS"] = "MIN"
+    ) -> None:
         """
         Measure a specific item on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        parameter:
+
+        Internal measurment types (need to be maped)
             FREQuency | PERiod | PEAK | UPEakvalue | LPEakvalue | PPCount |
             NPCount | RECount | FECount | HIGH | LOW | AMPLitude | CRESt |
             MEAN | RMS | RTIMe | FTIMe | PDCYcle | NDCYcle | PPWidth |
             NPWidth | CYCMean | CYCRms | STDDev | TFRequency | TPERiode |
             POVershoot | NOVershoot | DELay | PHASe
+        
+        Args:
+            <position>     1 to 6 (corresponding to the measurement slots on the oscilloscope)
+            <parameter>     MIN|MAX|PKPK|RMS
         """
-        if parameter == "MIN":
+
+        if parameter == "MIN":  # Mapping
             parameter = "LPEakvalue"
         if parameter == "MAX":
             parameter = "UPEakvalue"
         if parameter == "PKPK":
             parameter = "PEAK"
+
+        logger.debug(f"Measuring {parameter} on channel {position}")
+
+        return self.write(f":MEASurement{position}:MAIN {parameter}")
     
-        cmd = f":MEASurement{position}:MAIN {parameter}"
-        logger.debug(f"Measuring {parameter} on channel {position} -> {cmd}")
-        return self.write(cmd)
+    # ---------------------------
+    # API Commands
+    # ---------------------------
+    # Description is in the scope_protocol... not typing it again
 
-    def measure_on_off(self, position, state=True):
-        """
-        Enable or disable a specific measurement on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        state: True to enable, False to disable
-        """
-        cmd = f":MEASure:ADVanced:P{position} {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting measurement {position} to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
-
+    def identify(self) -> str:
+        return(self._scpi_identify)
+    
+    def set_resolution(self,
+        bit: int
+    ) -> None:
+        self._scpi_set_resolution(bit)
+        
     def set_channel(
         self,
-        channel: int,
-        enable: bool,
-        attenuation: float,
-        unit: str,
-        label: str,
-        coupling: str,
-        bandwidth_limit: str,
-        volts_per_div: float,
-        position: float,
+        channel: Literal[1, 2, 3, 4] = 1,
+        enable: Literal["ON", "OFF"] = "ON",
+        attenuation: float = 10,
+        unit: Literal["V", "A"] = "V",
+        label: str = "",
+        coupling: Literal["AC", "DC"] = "DC",
+        bandwidth_limit: Literal["FULL", "20MHz"] = "FULL",
+        volts_per_div: float = 5,
+        position: float = 0,
         ) -> None:
         
-
-        self.channel_state(
+        self._scpi_channel_state(
             channel=channel,
-            state="ON" if enable else "OFF"
+            state=enable
         )
         
-        if enable == False:
+        if enable == "OFF":
             return
         
-        self.set_channel_attenuation(
+        self._scpi_probe_attenuation(
             channel=channel,
             attenuation=attenuation
         )
         
-        self.set_channel_unit(
+        self._scpi_probe_unit(
             channel=channel,
             unit=unit
         )
 
         if label == "":
-            self.set_channel_label_on_off(
+            self._scpi_channel_label_state(
                 channel=channel,
                 state=False
             )
         else:
-            self.set_channel_label_on_off(
+            self._scpi_channel_label_state(
                 channel=channel,
                 state=True
             )
 
-            self.set_channel_label_text(
+            self._scpi_channel_label(
                 channel=channel,
                 text=label
             )
 
-        self.channel_coupling(
+        self._scpi_channel_coupling(
             channel=channel,
             coupling=coupling
         )
 
-        self.channel_bandwidth(
+        self._scpi_channel_bandwidth(
             channel=channel,
             bandwidth=bandwidth_limit
         )
 
-        self.channel_scale(
+        self._scpi_channel_scale(
             channel=channel,
             scale=volts_per_div
         )
 
-        self.channel_position(
+        self._scpi_channel_position(
             channel=channel,
             position=position
         )
@@ -528,172 +573,113 @@ class RUS_HMO3000:
         )
 
     def reset(self):
-        """
-        Clears persistence,
-        statistics and measurements.
-        """
 
-        # Disable all channels
         for i in range(1, 5):
             self.channel_state(
                 channel=i,
                 state="OFF"
             )
 
-        # Disable measurement slots
         for i in range(1, 6):
 
-            try:
-                self.measure_enable(
-                    position=i,
-                    state=False
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to disable measurement {i}: {e}"
-                )
+            self._scpi_measure_enable(
+                position=i,
+                state="OFF"
+            )
 
-            try:
-                self.measure_statistics_on_off(
-                    position=i,
-                    state=False
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to disable statistics {i}: {e}"
-                )
+            self._scpi_measure_statistics_on_off(
+                position=i,
+                state="OFF"
+            )
+            
+            self._scpi_measure_statistics_reset(
+                position=i
+            )
 
-        # Clear statistics
-        for i in range(1, 6):
-            try:
-                self.measure_statistics_reset(
-                    position=i
-                )
-            except Exception:
-                pass
-
-        # Clear persistence traces
-        self.display_persistance_clear()
-
-        # Disable persistence mode completely
-        self.display_persistance_state(
-            state="OFF"
-        )
+        self._scpi_display_persistance_clear()
+        self._scpi_display_persistance_state("OFF")
 
         time.sleep(2)
 
     def set_persistence(
         self,
-        duration: float,
+        duration: float = 0,
     ):
-        """
-        Enables display persistence.
-
-        Args:
-            duration:
-                0 = OFF
-                >0 = persistence time in seconds
-                <0 = infinite persistence
-        """
 
         if duration == 0:
 
-            self.display_persistance_state(
+            self._scpi_display_persistance_state(
                 state="OFF"
             )
 
         else:
 
-            self.display_persistance_state(
+            self._scpi_display_persistance_state(
                 state="ON"
             )
 
             if duration < 0:
 
-                self.display_persistnace_infinity(
+                self._scpi_display_persistance_infinity(
                     state="ON"
                 )
 
             else:
 
-                self.display_persistnace_infinity(
+                self._scpi_display_persistance_infinity(
                     state="OFF"
                 )
 
-                self.display_persistance_time(
+                self._scpi_display_persistance_time(
                     time=duration
                 )
 
     def set_measurement(
         self,
-        position: int,
-        channel: int,
-        measurement_type: str,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: Literal[1, 2, 3, 4] = 1,
+        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF",
     ):
-        """
-        Adds a measurement to the screen.
-
-        Args:
-            position: Measurement slot.
-            channel: Channel number (1..4)
-            measurement_type:
-                OFF
-                FREQuency
-                PERiod
-                HIGH
-                LOW
-                AMPLitude
-                RMS
-                MEAN
-                STDDev
-                ...
-        """
 
         if measurement_type == "OFF":
-
-            self.measure_enable(
-                position=position,
-                state=False
-            )
-
-            self.measure_statistics_on_off(
-                position=position,
-                state=False
-            )
-
+            enable = measurement_type
         else:
+            enable = "ON"
 
-            self.measure_enable(
-                position=position,
-                state=True
-            )
+        self._scpi_measure_enable(
+            position=position,
+            state=enable
+        )
 
-            self.measure_statistics_on_off(
-                position=position,
-                state=True
-            )
+        self._scpi_measure_statistics_on_off(
+            position=position,
+            state=enable
+        )
 
-            self.measurment_source(
-                position=position,
-                source=channel
-            )
+        if measurement_type == "OFF":
+            return
 
-            self.measure_item(
-                position=position,
-                parameter=measurement_type
-            )
+        self._scpi_measurment_source(
+            position=position,
+            source=channel
+        )
 
-    def save_screenshot(self, filename: str, suffix: str = "") -> None:
-        """
-        Save screenshot from HMO3000 oscilloscope.
-        """
+        self._scpi_measure_item(
+            position=position,
+            parameter=measurement_type
+        )
+
+    def save_screenshot(self, 
+        filename: str, 
+        suffix: str = ""
+    ) -> None:
 
         logger.debug(
-            "Saving screenshot from HMO3000 oscilloscope -> HCOPy:DATA?"
+            "Saving screenshot"
         )
 
         try:
-            self.stop()
+            self._scpi_stop()
             time.sleep(0.5)
 
             result = self.inst.query_binary_values(
@@ -704,14 +690,6 @@ class RUS_HMO3000:
 
             logger.debug(
                 f"Received {len(result)} bytes from oscilloscope"
-            )
-
-            logger.debug(
-                f"Image starts with: {bytes(result[:16])}"
-            )
-
-            timestamp = datetime.datetime.now().strftime(
-                "%Y%m%d_%H%M%S"
             )
 
             file_path = os.path.join(
@@ -732,7 +710,4 @@ class RUS_HMO3000:
             )
 
     def persistence_clear(self):
-        """
-        Clears the persistence traces from the display.
-        """
-        self.display_persistance_clear()
+        self.persistence_clear()
