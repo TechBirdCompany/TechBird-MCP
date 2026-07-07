@@ -3,27 +3,42 @@ from typing import Protocol, Optional
 
 class eload(Protocol):
 
-    def identify(self):
+    def identify(
+        self
+    ) -> str:
         """
         Query device identification.
+        
+        Returns:
+            Result of *IDN?
         """
         ...
 
-    def load_on(self) -> None:
+    def load_on(
+        self
+    ) -> None:
         """
         Enable electronic load.
         """
         ...
 
-    def load_off(self) -> None:
+    def load_off(
+        self
+    ) -> None:
         """
         Disable electronic load.
         """
         ...
 
-    def get_load_state(self):
+    def get_load_state(
+        self
+    ) -> bool:
         """
         Query load state.
+
+        Returns:
+            State of load 
+            [TRUE = ON | FALSE = OFF]
         """
         ...
 
@@ -34,6 +49,13 @@ class eload(Protocol):
     ) -> None:
         """
         Configure operating mode.
+
+        Args:
+            mode:       Mode of channel for eload
+                        [CC]
+
+            channel:    Optional parameter as most do have only one channel
+                        But beside this; Number of channel
         """
         ...
 
@@ -44,18 +66,32 @@ class eload(Protocol):
     ) -> None:
         """
         Configure load current.
+
+        Args:
+            current:    Set current for channel... as currently on CC is defined
+                        This definition need to be changed, when other modes should
+                        be supported
+                        [CC]
+
+            channel:    Optional parameter as most do have only one channel
+                        But beside this; Number of channel
         """
         ...
 
     def fetch(
         self,
         channel: Optional[int] = None,
-    ) -> Optional[tuple[float, float]]:
+    ) -> tuple[float, float]:
         """
         Read measurement values.
 
+        Args:
+            channel:    Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+
         Returns:
-            (voltage, current)
+            Returns volage and current, which are mostly the returned values in SCPI command guides
+            [voltage, current]
         """
         ...
 
