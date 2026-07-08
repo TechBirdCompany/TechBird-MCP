@@ -15,10 +15,10 @@ from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
 
 DEVICES = [
     #(scope, RUS_HMO3000),
-    (scope, Siglent_SDS2000),
+    #(scope, Siglent_SDS2000),
 
-    #(dmm, OWON_XDM1000),
-    #(dmm, RIGOL_DMM800),
+    (dmm, OWON_XDM1000),
+    (dmm, RIGOL_DMM800),
 
     #(eload, EastTester_ET54),
     #(eload, PeakTech_2275),

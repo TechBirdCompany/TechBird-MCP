@@ -85,15 +85,15 @@ class scope(Protocol):
         Configure trigger settings.
 
         Args:
-            channel:    Sets Trigger to Channel 1 to 4
-                        With a 2 CH Scope there should be a warning when
-                        channel > 2 and abort the test
-                        [1|2|3|4]
+            <channel>    Sets Trigger to Channel 1 to 4
+                         With a 2 CH Scope there should be a warning when
+                         channel > 2 and abort the test
+                         [1|2|3|4]
 
-            mode:       Sets trigger mode
-                        [EDGE]
+            <mode>        Sets trigger mode
+                          [EDGE]
 
-            level:      Level of the trigger
+            <level>       Level of the trigger
         """
         ...
 
@@ -105,7 +105,7 @@ class scope(Protocol):
         Configure horizontal scale.
         
         Args:
-            sec_per_div:    Sets the horizontal scale as seconds per division
+            <sec_per_div>    Sets the horizontal scale as seconds per division
         """
         ...
 
@@ -119,6 +119,7 @@ class scope(Protocol):
         Args:
             duration:   Sets the duration of the presistance mode
                         0 should turn off persistance mode
+                        -1 for infinity
         """
         ...
 
@@ -204,7 +205,7 @@ class scope(Protocol):
             Integer of captured waveforms
         """
 
-    def persistence_clear(self):
+    def persistence_clear(self) -> None:
         """
         Clears the persistence traces from the display.
         """

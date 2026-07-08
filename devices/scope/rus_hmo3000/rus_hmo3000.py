@@ -186,18 +186,15 @@ class RUS_HMO3000:
     def _scpi_channel_bandwidth(
         self, 
         channel: Literal[1, 2, 3, 4] = 1, 
-        bandwidth: Literal["FULL", "20MHz"] = "FULL"
+        bandwidth: Literal["FULL", "B20"] = "FULL"
     ) -> None:
         '''
         Selects the bandwidth limit for the indicated channel.
         
         Args:
             <channel>   1|2|3|4
-            <bandwidth>  FULL|20M
+            <bandwidth>  FULL|B20
         '''
-
-        if bandwidth == "20MHz": # Mapping
-            bandwidth = "B20"
 
         logger.info(f"Set channel {channel} to bandwidth {bandwidth}")
 
@@ -330,7 +327,7 @@ class RUS_HMO3000:
 
     def _scpi_set_resolution(
         self, 
-        bit: Literal[8, 16] = 16
+        bit: Literal["AUTO", "OFF"] = "AUTO"
     ) -> None:
         """
         Set the acquisition resolution to AUTO or OFF
@@ -339,15 +336,10 @@ class RUS_HMO3000:
         Args:
             <bit>       Desired bitrate
         """
-
-        if bit == 8: # Mapping    
-            bit_scope = "OFF"
-        else:
-            bit_scope = "AUTO"
         
         logger.debug(f"Setting acquisition resolution to {bit}")
 
-        self.write(cmd = f"ACQuire:HRESolution {bit_scope}")
+        self.write(cmd = f"ACQuire:HRESolution {bit}")
 
     def _scpi_set_timebase(
         self, 
@@ -467,7 +459,7 @@ class RUS_HMO3000:
     def _scpi_measure_item(
         self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
-        parameter: Literal["MIN", "MAX", "PKPK", "RMS"] = "MIN"
+        parameter: Literal["LPEakvalue", "UPEakvalue", "PEAK", "RMS"] = "RMS"
     ) -> None:
         """
         Measure a specific item on the oscilloscope.
@@ -484,13 +476,6 @@ class RUS_HMO3000:
             <parameter>     MIN|MAX|PKPK|RMS
         """
 
-        if parameter == "MIN":  # Mapping
-            parameter = "LPEakvalue"
-        if parameter == "MAX":
-            parameter = "UPEakvalue"
-        if parameter == "PKPK":
-            parameter = "PEAK"
-
         logger.debug(f"Measuring {parameter} on channel {position}")
 
         return self.write(f":MEASurement{position}:MAIN {parameter}")
@@ -505,8 +490,14 @@ class RUS_HMO3000:
     
     def set_resolution(
         self,
-        bit: int
+        bit: Literal[8, 16] = 16
     ) -> None:
+        
+        if bit == 8: # Mapping    
+            bit_scope = "OFF"
+        else:
+            bit_scope = "AUTO"
+
         self._scpi_set_resolution(bit)
         
     def set_channel(
@@ -561,6 +552,9 @@ class RUS_HMO3000:
             coupling=coupling
         )
 
+        if bandwidth_limit == "20MHz": # Mapping
+            bandwidth_limit = "B20"
+
         self._scpi_channel_bandwidth(
             channel=channel,
             bandwidth=bandwidth_limit
@@ -595,7 +589,7 @@ class RUS_HMO3000:
     def reset(self):
 
         for i in range(1, 5):
-            self.channel_state(
+            self._scpi_channel_state(
                 channel=i,
                 state="OFF"
             )
@@ -683,6 +677,13 @@ class RUS_HMO3000:
             position=position,
             source=channel
         )
+
+        if measurement_type == "MIN":  # Mapping
+            parameter = "LPEakvalue"
+        if measurement_type == "MAX":
+            parameter = "UPEakvalue"
+        if measurement_type == "PKPK":
+            parameter = "PEAK"
 
         self._scpi_measure_item(
             position=position,

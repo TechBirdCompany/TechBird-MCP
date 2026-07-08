@@ -4,6 +4,7 @@ import os
 import time
 from loguru import logger
 from utils.utils import plot_data
+from typing import Literal
 
 # ---------------------------
 # Constants & ENUMS
@@ -61,55 +62,50 @@ class RIGOL_DMM800:
             logger.warning(f"Failure with command -> {cmd}")
 
     # ---------------------------
-    # Configure Commands
+    # SCPI Commands
     # ---------------------------
 
-    def configure_voltage_dc(self, range, lim, resolution):
+    def _scpi_configure_voltage_dc(
+        self, 
+        range: Literal["100mV", "1V", "10V", "100V", "1000V", "AUTO"] = "AUTO", 
+        lim = "", 
+        resolution: Literal[1000, 100, 10] = 1000 
+    ) -> None:
         '''
         Presets the multimeter with the specified range and resolution for DC voltage measurement
         This function is mainly used for range and resolution... and lim is not used? 
         
-        <range>         100mV|1V|10V|100V|1000V|AUTO 
-        <lim>           MIN|MAX|DEF
-        <resolution>    1000|100|10 #FAST|MEDIUM|SLOW
+        range         100mV|1V|10V|100V|1000V|AUTO 
+        lim           MIN|MAX|DEF
+        resolution    1000|100|10 #FAST|MEDIUM|SLOW
         '''
 
-        cmd = f"CONFigure:VOLTage:DC {range},{resolution}"
-        try:
-            logger.info(f"Configuring DMM for DC voltage measurement")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Configure device for VDC")
 
-    # ---------------------------
-    # Data Commands
-    # ---------------------------
+        self.write(f"CONFigure:VOLTage:DC {range},{resolution}")
 
-    def initiate(self):
+    def _scpi_initiate(self) -> None:
         '''
         Initiate measurments, need to be done before a fetch
         '''
 
-        cmd = f"INITiate[:IMMediate]"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Initialte measurments")
 
-    def read(self):
+        self.write(f"INITiate[:IMMediate]")
+
+    def _scpi_read(self) -> float:
         '''
         Returns and clears all stored data
         '''
 
-        cmd = f"R?"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Read and Clear buffer")
 
-    def _parse_values(self, response):
+        return self.query(f"R?")
+        
+    def _parse_values(
+        self, 
+        response
+    ) -> float:
         if response is None:
             return []
 
@@ -129,7 +125,7 @@ class RIGOL_DMM800:
 
         return [float(v) for v in response.split(",") if v.strip()]
 
-    def fetch_single(self) -> float:
+    def _scpi_fetch_single(self) -> float:
         '''
         Compatibility wrapper for the OWON-style single-sample API.
         '''
@@ -149,9 +145,15 @@ class RIGOL_DMM800:
 
         return values[-1]
 
-    def fetch_storage(self, samples: int = 200):
+    def _scpi_fetch_storage(
+        self, 
+        samples: int = 200
+    ) -> None:
         '''
         Compatibility wrapper for the OWON-style buffered sampling API.
+        
+        Args:
+            samples     Number of samples that should be fetched
         '''
 
         try:
@@ -169,58 +171,34 @@ class RIGOL_DMM800:
 
         return values
 
-    def fetch(self):
-        '''
-        Fetches all values from the measurement buffer and returns them as a list of floats.
-        '''
-        
-        try:
-            logger.info(f"Fetching all values from measurement buffer")
-            response = self.query("FETCh?")
-        except:
-            logger.warning(f"Failure with command -> FETCh?")
-            response = "" \
-            
-        print(response)
-            
-        for element in response:
-            print(element)
-
-        return [
-            float(v)
-            for v in response.split(",")
-            if v.strip()
-        ]
-
-    def data_points(self):
+    def _scpip_data_points(self) -> None:
         '''
         Returns the number of data points currently stored in the measurement buffer.
         DM858 can store up to 500,000 readings while DM858E can store up to 20,000 readings
         '''
 
-        cmd = f"DATA:POINTS?"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Querying number of data points in measurement buffer")
 
-    def data_remove(self, points):
+        self.query(f"DATA:POINTS?")
+        
+    def _scpi_data_remove(
+        self, 
+        points: int = 200
+    ) -> None:
         '''
         Removes the specified number of data points from the measurement buffer.
 
-        <points>    DM858: 1 to 500000
+        points      DM858: 1 to 500000
                     DM858E: 1 to 20000
         '''
 
-        cmd = f"DATA:REMove? {points}"
-        try:
-            logger.info(f"Removing {points} data points from measurement buffer")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Removing {points} data points from measurement buffer")
 
-    def data_threshold(self, threshold):
+        return self.write(f"DATA:REMove? {points}")
+
+    def _scpi_data_threshold(self, 
+        threshold: int = 200
+    ) -> None:
         '''
         Sets the threshold for data storage in the measurement buffer.
         The total number of readings stored in the memory cannot exceed the threshold
@@ -230,23 +208,17 @@ class RIGOL_DMM800:
                        DM858E: 1 to 20000
         '''
 
-        cmd = f"DATA:POINts:EVENt:THReshold {threshold}"
-        try:
-            logger.info(f"Setting data storage threshold to {threshold}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting data storage threshold to {threshold}")
 
-    # ---------------------------
-    # Calculate Commands
-    # ---------------------------
-
-    def calculate_average_all(self):
+        return self.write(f"DATA:POINts:EVENt:THReshold {threshold}")
+    
+    def _scpi_calculate_average_all(self) -> list[float]:
         """
         Queries the average value, standard deviation, minimum value, and maximum value
         for the Statistics operation:
 
-        [average, std_dev, min, max]
+        Returns:
+            [average, std_dev, min, max]
         """
 
         cmd = "CALCulate:AVERage:ALL?"
@@ -271,64 +243,61 @@ class RIGOL_DMM800:
             logger.warning(f"Failure with command -> {cmd}")
             return None
 
-    def calculate_clear(self):
+    def _scpi_calculate_clear(self) -> None:
         '''
         Clears all limit values, histogram data, statistical information, and measurement results.
         '''
 
-        cmd = f"CALCulate:CLEar[:IMMediate]"
-        try:
-            logger.info(f"Clearing calculation data")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Clearing calculation data")
 
-    def calculate_average_count(self):
+        return self.write(f"CALCulate:CLEar[:IMMediate]")
+
+    def _scpi_calculate_average_count(self) -> int:
         '''
         Returns the number of samples used in the average calculation.
         '''
 
-        cmd = f"CALCulate:AVERage:COUNt?"
-        try:
-            logger.info(f"Querying number of samples used in average calculation") 
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Querying number of samples used in average calculation") 
 
-    def calculate_average_state(self, state):
+        return self.query(cmd = f"CALCulate:AVERage:COUNt?")
+
+    def _scpi_calculate_average_state(
+        self, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         '''
         Enables or disables the average calculation.
         This command won't work in AUTO mode.
 
-        <state>    ON|OFF
+        Args:
+            state:    ON|OFF
         '''
 
-        cmd = f"CALCulate:AVERage:STATe {state}"
-        try:
-            logger.info(f"Setting average calculation state to {state}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting average calculation state to {state}")
 
-    # ---------------------------
-    # Screenshot Command
-    # ---------------------------
-
-    def hcopy_sdump_data_format(self, format):
+        return self.write(f"CALCulate:AVERage:STATe {state}")
+    
+    def _scpi_hcopy_sdump_data_format(
+        self, 
+        format: Literal["BMP", "PNG"] = "PNG"
+    ) -> None:
         '''
         Sets the format for the hardcopy dump data.
 
-        <format>    BMP|PNG
+        Args:
+            format: BMP|PNG
         '''
 
-        cmd = f"HCOPy:SDUMp:DATA:FORMat {format}"
-        try:
-            logger.info(f"Setting screenshot data format to {format}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting screenshot data format to {format}")
 
-    def hcopy_sdump_data_dump(self, filename=None, folder=None, timestamp=None, format="PNG"):
+        return self.write(f"HCOPy:SDUMp:DATA:FORMat {format}")
+
+    def _scpi_hcopy_sdump_data_dump(
+        self, 
+        filename=None, 
+        folder=None, 
+        timestamp=None, 
+        format="PNG"):
         '''
         Saves a screenshot of the current display to a file.
         '''

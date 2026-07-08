@@ -159,7 +159,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_resolution(
         self, 
-        bit: Literal[8, 16]
+        bit: Literal["8Bits", "10Bits"]
     ) -> None:
         """
         Set the acquisition resolution to AUTO or OFF
@@ -169,19 +169,14 @@ class Siglent_SDS2000:
             <bit>       Desired bitrate
         """
 
-        if bit == 10: # Mapping    
-            bit_scope = "10Bits"
-        else:
-            bit_scope = "8Bits"
+        logger.debug(f"Setting acquisition resolution to {bit}")
 
-        logger.debug(f"Setting acquisition resolution to {bit_scope}")
-
-        self.write(f":ACQuire:RESolution {bit_scope}")
+        self.write(f":ACQuire:RESolution {bit}")
 
     def _scpi_set_channel_bwlimit(
         self, 
         channel: Literal[1, 2, 3, 4], 
-        bw: Literal["FULL", "20MHz"]
+        bw: Literal["FULL", "20M"]
     ) -> None:
         """
         Set the bandwidth limit for a specific channel.
@@ -190,9 +185,6 @@ class Siglent_SDS2000:
             <channel>   Channel 1 to 4
             <bw>        Bandwith of channel.
         """
-
-        if bw == "20MHz": # Mapping
-            bw = "20M"
         
         logger.debug(f"Setting bandwidth limit for channel {channel} to {bw}")
         
@@ -487,14 +479,21 @@ class Siglent_SDS2000:
     def identify(
         self
     ) -> str:
+        
         return(self._scpi_identify())
     
     def set_resolution(
         self,
         bit: Literal[8, 16] = 16
     ) -> None:
+        
+        if bit == 10: # Mapping    
+            bit_scope = "10Bits"
+        else:
+            bit_scope = "8Bits"
+        
         self._scpi_set_resolution(
-            bit=bit
+            bit=bit_scope
         )
 
     def set_channel(
@@ -554,6 +553,9 @@ class Siglent_SDS2000:
             coupling=coupling
         )
 
+        if bw == "20MHz": # Mapping
+            bw = "20M"
+
         self._scpi_set_channel_bwlimit(
             channel=channel,
             bw=bandwidth_limit
@@ -568,12 +570,113 @@ class Siglent_SDS2000:
             channel=channel,
             offset=position
         )
+    
+    def set_trigger(
+        self,
+        channel: int,
+        mode: str,
+        level: float
+    ) -> None:
+        
+        self._scpi_set_trigger_edge_source(
+            channel=channel
+        )
+
+        self._scpi_set_trigger_edge(
+            level=level
+        )
+    
+    def set_timebase(
+        self,
+        sec_per_div: float
+    ) -> None:
+        
+        self._scpi_set_timebase(
+            sec_per_div=sec_per_div
+        )
+
+    def set_persistence(
+        self,
+        duration: float = 0
+    ) -> None:
+        
+        self._scpi_display_persistance(
+            duration=duration
+        )
+
+    def reset(
+        self
+    ) -> None:
+
+        for i in range(1, 4+1):
+            self._scpi_set_channel_enable(
+                channel=i,
+                state="OFF"
+            )
+
+        for i in range(1, 5+1):
+
+            self._scpi_measure_statistics_on_off(
+                position=i,
+                state="OFF"
+            )
+
+            self._scpi_measure_on_off(
+                position=i,
+                state="OFF"
+            )
+
+        self._scpi_display_persistance(
+            duration=0
+        )
+
+        time.sleep(2)
+
+    def set_measurement(
+        self,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: Literal[1, 2, 3, 4] = 1,
+        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
+    ) -> None:
+                
+        if measurement_type == "OFF":
+
+            self._scpi_measure_on_off(
+                position=position,
+                channel = "OFF"
+            )
+            
+            self._scpi_measure_statistics_on_off(
+                state="OFF"
+            )
+
+            return
+        else:
+            self._scpi_measure_on_off(
+                position=position,
+                state = "ON"
+            )
+            
+            self._scpi_measure_statistics_on_off(
+                state="ON"
+            )
+
+            self._scpi_measure_source1(
+                position=position,
+                channel=channel
+            )
+
+            self._scpi_measure_item(
+                position=position,
+                parameter=measurement_type
+            )
 
     def save_screenshot(
         self, 
         filename:str = "TEMP", 
         suffix:str = ""
     ) -> None:
+        
         cmd = "PRIN? BMP"
         logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
         
@@ -596,19 +699,33 @@ class Siglent_SDS2000:
         with open(path, "wb") as f:
             f.write(data)
 
-        return path
-    
-    def set_trigger(
-        self,
-        channel: int,
-        mode: str,
-        level: float
+    def run(
+        self
     ) -> None:
         
-        self._scpi_set_trigger_edge_source(
-            channel=channel
-        )
+        self._scpi_run()
 
-        self._scpi_set_trigger_edge(
-            level=level
-        )
+    def stop(
+        self
+    ) -> None:
+        
+        self._scpi_stop()
+
+    def close(
+        self
+    ) -> None:
+        
+        self.close
+
+    def get_count(
+        self,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> int:
+
+        logger.debug(f"Get count from statistics at position {position}")
+
+        return float(self.query(f":MEASure:ADVanced:P{position}:STATistics? COUNt"))
+    
+    def persistence_clear(self) -> None:
+        
+        self._scpi_display_clear()

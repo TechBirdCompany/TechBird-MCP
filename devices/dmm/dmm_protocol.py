@@ -1,13 +1,13 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Literal
 
 
 class dmm(Protocol):
 
     def setup(
         self,
-        mode: str,
-        range: float,
-        speed: str,
+        mode: Literal["V", "A"] = "V",
+        range: float = 0,
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
     ) -> None:
         """
         Configure the device.
@@ -36,11 +36,11 @@ class dmm(Protocol):
             Returns the current value
         """
         ...
-
+        
     def fetch_storage(
         self,
         samples: int = 200,
-    ):
+    ) -> list[float]:
         """
         Gets multiple measurement values.
 
@@ -52,11 +52,15 @@ class dmm(Protocol):
         """
         ...
 
-    def set_display(self) -> None:
+    def set_display(
+        self,
+        scenario: Literal["STAT"]
+    ) -> None:
         """
-        Enables statistical display mode. Also kind of stupid function
-        as it is hard to definy what should be done? What is the best screen?
-        As an idea. Sets the display to given scneario like "statistic" or so.
+        Enables verious scenarious
+
+        Args:
+            scenario:   STAT    sets the display to a statistic mode
         """
         ...
 
@@ -65,9 +69,9 @@ class dmm(Protocol):
         folder: str = "measurements",
         prefix: str = "",
         label: str = "",
-    ) -> str:
+    ) -> None:
         """
-        Creates or retrieves a screenshot.
+        Retrieves a screenshot.
 
         Args:
             folder: Folder for screenshot... should actually be hardcoded
@@ -75,9 +79,6 @@ class dmm(Protocol):
             prefix: Should be suffix... but ads to the name for unified nameing
 
             label:  Label of the measured domain or signal
-
-        Returns:
-            File path or None.
         """
         ...
 
@@ -90,7 +91,7 @@ class dmm(Protocol):
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ) -> str:
+    ) -> None:
         """
         Creates a plot from stored measurements.
 
@@ -101,11 +102,6 @@ class dmm(Protocol):
             nominal_value:  Nominal value, will be displayed as center line
             min_limit:      Minimal limit
             max_limit:      Maximal limit
-            limit:          Limits the plot to samples as it utilize the fetch_storage() function
-                            Not sure if this is the smartest idea... or if the function
-                            accepts an array or list
-
-        Returns:
-            Path to generated plot image.
+            limit:          Limit to use for the fetch_storage function
         """
         ...
