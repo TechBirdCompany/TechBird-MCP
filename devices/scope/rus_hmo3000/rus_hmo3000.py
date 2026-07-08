@@ -1,5 +1,4 @@
 import pyvisa
-import datetime
 import os
 import time
 from loguru import logger
@@ -46,7 +45,8 @@ class RUS_HMO3000:
     # SCPI Commands
     # ---------------------------
 
-    def _scpi_display_persistance_state(self, 
+    def _scpi_display_persistance_state(
+        self, 
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
         '''
@@ -61,8 +61,9 @@ class RUS_HMO3000:
 
         return self.write(f"DISPlay:PERSistence:STATe {state}")
 
-    def _scpi_display_persistance_time(self, 
-        time
+    def _scpi_display_persistance_time(
+        self, 
+        time: float
     ) -> None:
         '''
         Persistence time if persistence is active (please refer to DISPlay:PERSistence:STATe). 
@@ -77,7 +78,8 @@ class RUS_HMO3000:
 
         return self.write(f"DISPlay:PERSistence:TIME {time}")
     
-    def _scpi_display_persistance_infinity(self,
+    def _scpi_display_persistance_infinity(
+        self,
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
         '''
@@ -101,7 +103,8 @@ class RUS_HMO3000:
 
         return self.write(f"DISPlay:PERSistence:CLEar")
 
-    def _scpi_channel_state(self, 
+    def _scpi_channel_state(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         state: Literal["ON", "OFF"] = "ON"
     ) -> None:
@@ -117,7 +120,8 @@ class RUS_HMO3000:
 
         return self.write(f"CHANnel{channel}:STATe {state}")
 
-    def _scpi_channel_coupling(self, 
+    def _scpi_channel_coupling(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         coupling: Literal["AC", "DC"] = "DC"
     ) -> None:
@@ -133,7 +137,8 @@ class RUS_HMO3000:
 
         return self.write(f"CHANnel{channel}:COUPling {coupling}")
     
-    def _scpi_channel_scale(self, 
+    def _scpi_channel_scale(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         scale: float = 10
     ) -> None:
@@ -155,7 +160,8 @@ class RUS_HMO3000:
 
         return self.write(f"CHANnel{channel}:SCALe {scale}")
 
-    def _scpi_channel_position(self, 
+    def _scpi_channel_position(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         position: float = 0
     ) -> None:
@@ -177,7 +183,8 @@ class RUS_HMO3000:
 
         self.write(f"CHANnel{channel}:POSition {divisions}")
 
-    def _scpi_channel_bandwidth(self, 
+    def _scpi_channel_bandwidth(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         bandwidth: Literal["FULL", "20MHz"] = "FULL"
     ) -> None:
@@ -186,7 +193,7 @@ class RUS_HMO3000:
         
         Args:
             <channel>   1|2|3|4
-            <bandwidth>  FULL|20MHz
+            <bandwidth>  FULL|20M
         '''
 
         if bandwidth == "20MHz": # Mapping
@@ -220,7 +227,8 @@ class RUS_HMO3000:
 
         return self.write(f'CHANnel{channel}:LABel "{label}"')
 
-    def _scpi_channel_label_state(self, 
+    def _scpi_channel_label_state(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
@@ -236,7 +244,8 @@ class RUS_HMO3000:
 
         return self.write(f"CHANnel{channel}:LABel:STATe {state}")
 
-    def _scpi_probe_unit(self, 
+    def _scpi_probe_unit(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         unit: Literal["V", "A"] = "V"
     ) -> None:
@@ -252,7 +261,8 @@ class RUS_HMO3000:
 
         return self.write(f"PROBe{channel}:SETup:ATTenuation:UNIT {unit}")
     
-    def _scpi_probe_attenuation(self, 
+    def _scpi_probe_attenuation(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         attenuation: float = 10
     ) -> None:
@@ -272,7 +282,8 @@ class RUS_HMO3000:
 
         return self.write(f"PROBe{channel}:SETup:ATTenuation:MANual {attenuation}")
 
-    def _scpi_trigger_mode(self, 
+    def _scpi_trigger_mode(
+        self, 
         mode: Literal["AUTO"] = "AUTO"
     ) -> None:
         '''
@@ -317,7 +328,8 @@ class RUS_HMO3000:
 
         self.write("STOP")
 
-    def _scpi_set_resolution(self, 
+    def _scpi_set_resolution(
+        self, 
         bit: Literal[8, 16] = 16
     ) -> None:
         """
@@ -326,19 +338,19 @@ class RUS_HMO3000:
         
         Args:
             <bit>       Desired bitrate
-        
         """
 
         if bit == 8: # Mapping    
-            bit_HMO = "OFF"
+            bit_scope = "OFF"
         else:
-            bit_HMO = "AUTO"
+            bit_scope = "AUTO"
         
         logger.debug(f"Setting acquisition resolution to {bit}")
 
-        self.write(cmd = f"ACQuire:HRESolution {bit_HMO}")
+        self.write(cmd = f"ACQuire:HRESolution {bit_scope}")
 
-    def _scpi_set_timebase(self, 
+    def _scpi_set_timebase(
+        self, 
         sec_per_div: float
     ) -> None:
         """
@@ -354,7 +366,8 @@ class RUS_HMO3000:
 
         self.write(f"TIMebase:SCALe {sec_per_div}")
 
-    def _scpi_set_trigger_edge(self, 
+    def _scpi_set_trigger_edge(
+        self, 
         channel: Literal[1, 2, 3, 4] = 1, 
         level: float=0.0
     ) -> None:
@@ -367,7 +380,8 @@ class RUS_HMO3000:
 
         self.write(f"TRIGger:A:LEVel{channel} {level}")
 
-    def _scpi_measure_statistics_on_off(self, 
+    def _scpi_measure_statistics_on_off(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
@@ -383,7 +397,8 @@ class RUS_HMO3000:
 
         self.write(f"MEASurement{position}:STATistics:ENABle {state}")
 
-    def _scpi_measure_statistics_reset(self, 
+    def _scpi_measure_statistics_reset(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> None:
         """
@@ -397,7 +412,8 @@ class RUS_HMO3000:
 
         self.write(f"MEASurement{position}:STATistics:RESet")
 
-    def _scpi_get_count(self, 
+    def _scpi_get_count(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
         """
@@ -414,7 +430,8 @@ class RUS_HMO3000:
 
         return int(self.query(f"MEASurement{position}:RESult:WFMCount?"))       
         
-    def _scpi_measure_enable(self, 
+    def _scpi_measure_enable(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
         state: Literal["ON", "OFF"] = "OFF"
     ) -> None:
@@ -430,7 +447,8 @@ class RUS_HMO3000:
 
         self.write(f"MEASurement{position}:ENABle {state}")
 
-    def _scpi_measurment_source(self, 
+    def _scpi_measurment_source(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
         source: Literal[1, 2, 3, 4] = 1
     ) -> None:
@@ -446,7 +464,8 @@ class RUS_HMO3000:
 
         self.write(f"MEASurement{position}:SOURce CH{source}")
 
-    def _scpi_measure_item(self, 
+    def _scpi_measure_item(
+        self, 
         position: Literal[1, 2, 3, 4, 5, 6] = 1, 
         parameter: Literal["MIN", "MAX", "PKPK", "RMS"] = "MIN"
     ) -> None:
@@ -484,7 +503,8 @@ class RUS_HMO3000:
     def identify(self) -> str:
         return(self._scpi_identify)
     
-    def set_resolution(self,
+    def set_resolution(
+        self,
         bit: int
     ) -> None:
         self._scpi_set_resolution(bit)
@@ -604,7 +624,7 @@ class RUS_HMO3000:
     def set_persistence(
         self,
         duration: float = 0,
-    ):
+    ) -> None:
 
         if duration == 0:
 
@@ -669,8 +689,9 @@ class RUS_HMO3000:
             parameter=measurement_type
         )
 
-    def save_screenshot(self, 
-        filename: str, 
+    def save_screenshot(
+        self, 
+        filename: str = "TEMP", 
         suffix: str = ""
     ) -> None:
 
@@ -709,5 +730,26 @@ class RUS_HMO3000:
                 f"Failed to save screenshot: {ex}"
             )
 
-    def persistence_clear(self):
+    def persistence_clear(self) -> None:
         self.persistence_clear()
+
+    def get_count(
+        self,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> int:
+        self._scpi_get_count(
+            position=position
+        )
+
+    def run(self) -> None:
+        self._scpi_run()
+
+    def stop(self) -> None:
+        self._scpi_stop()
+
+    def set_timebase(self,
+        sec_per_div: float,
+    ) -> None:
+        self._scpi_set_timebase(
+            sec_per_div=sec_per_div
+        )

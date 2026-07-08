@@ -11,7 +11,6 @@ from testcases.loadtest import load_test
 import time
 from loguru import logger
 
-
 def main():
 
     #scope = Siglent_SDS2000("TCPIP0::10.10.10.90::INSTR")

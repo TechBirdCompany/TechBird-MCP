@@ -1,6 +1,6 @@
-from typing import Protocol
-from typing import Literal
+from typing import Protocol, Literal, runtime_checkable
 
+@runtime_checkable
 class scope(Protocol):
 
     def identify(
@@ -16,7 +16,7 @@ class scope(Protocol):
 
     def set_resolution(
         self,
-        bit: int,
+        bit: Literal[8, 16] = 16
     ) -> None:
         """
         Configure acquisition resolution.
@@ -40,7 +40,7 @@ class scope(Protocol):
         coupling: Literal["AC", "DC"] = "DC",
         bandwidth_limit: Literal["FULL", "20MHz"] = "FULL",
         volts_per_div: float = 5,
-        position: float = 0,
+        position: float = 0
     ) -> None:
         """
         Configures the channel
@@ -79,7 +79,7 @@ class scope(Protocol):
         self,
         channel: int,
         mode: str,
-        level: float,
+        level: float
     ) -> None:
         """
         Configure trigger settings.
@@ -99,7 +99,7 @@ class scope(Protocol):
 
     def set_timebase(
         self,
-        sec_per_div: float,
+        sec_per_div: float
     ) -> None:
         """
         Configure horizontal scale.
@@ -111,7 +111,7 @@ class scope(Protocol):
 
     def set_persistence(
         self,
-        duration: float,
+        duration: float = 0
     ) -> None:
         """
         Configure display persistence.
@@ -135,7 +135,7 @@ class scope(Protocol):
         self,
         position: Literal[1, 2, 3, 4, 5, 6] = 1,
         channel: Literal[1, 2, 3, 4] = 1,
-        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF",
+        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
     ) -> None:
         """
         Configure measurement slot.
@@ -153,8 +153,8 @@ class scope(Protocol):
 
     def save_screenshot(
         self,
-        filename: str,
-        suffix: str,
+        filename: str = "TEMP",
+        suffix: str = ""
     ) -> None:
         """
         Save screenshot and return path.
@@ -192,7 +192,7 @@ class scope(Protocol):
 
     def get_count(
         self,
-        position: int
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
         """
         Returns the count of said position
