@@ -3,6 +3,7 @@ import re
 import socket
 import time
 from pathlib import Path
+from typing import Literal
 
 import pyvisa
 from loguru import logger
@@ -96,38 +97,130 @@ class Rigol_MSO1000:
             logger.warning("Failure closing connection to Rigol MSO1000")
 
     # ---------------------------
-    # SCPI command helpers
+    # SCPI Commands
     # ---------------------------
-    def display_clear(self):
+    def _scpi_display_clear(self) -> None:
+        """
+        Clears Display
+        """
+        logger.info(f"Clear Display")
+        
         self.write(":DISPlay:CLEar")
 
-    def display_persistence(self, duration: float):
-        if duration == 0:
-            self.write(":DISPlay:GRADing:TIME 0")
-        else:
-            self.write(f":DISPlay:GRADing:TIME {duration}")
+    def _scpi_display_persistence(
+        self, 
+        duration: Literal["MIN", "0.1", "0.2", "0.5", "1", "5", "10", "INFinite"] = "MIN"
+    ) -> None:
+        """
+        Sets the duration of the persistence mode
 
-    def acquire_type(self, mode: str):
+        Args:
+            <duration>  MIN|0.1|0.2|0.5|1|5|10|INFinite
+        """
+        logger.info(f"Set peristence time to {duration}")
+
+        self.write(f":DISPlay:GRADing:TIME {duration}")
+
+    def _scpi_acquire_type(
+        self, 
+        mode: Literal["NORMal", "AVERages", "PEAK", "HRESolution"] = "NORMAL"
+    ) -> None:
+        """
+        Sets the acquire type of the scope
+
+        Args:
+            <mode>  NORMal|AVERages|PEAK|HRESolution
+        """
+
+        logger.inf(f"Set scope to acquire mode {mode}")
+
         self.write(f":ACQuire:TYPE {mode}")
 
-    def channel_display(self, channel: int, state: bool):
-        self.write(f":CHANnel{channel}:DISPlay {'ON' if state else 'OFF'}")
+    def _scpi_channel_display(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Enables given channel
 
-    def channel_coupling(self, channel: int, coupling: str):
+        Args:
+            <channel>   1|2|3|4
+            <state> ON|OFF
+        """
+
+        logger.info(f"Sets channel {channel} to {state}")
+
+        self.write(f":CHANnel{channel}:DISPlay {state}")
+
+    def _scpi_channel_coupling(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        coupling: Literal["AC", "DC", "GND"] = "DC"
+    ) -> None:
+        """
+        Sets coupling of given channel
+
+        Args:
+            <channel>   1|2|3|4
+            <coupling>  AC|DC|GND
+        """
+
+        logger.info(f"Sets coupling of channel {channel} to {coupling}")
+
         self.write(f":CHANnel{channel}:COUPling {coupling}")
 
-    def channel_scale(self, channel: int, volts_per_div: float):
+    def _scpi_channel_scale(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        volts_per_div: float = 10
+    ) -> None:
+        """
+        Sets the volts per division of given channel
+
+        Args:
+            <channel>           1|2|3|4
+            <volts_per_div>     float
+
+        """
+
+        logger.info(f"Sets channel {channel} to {volts_per_div} V/div")
+
         self.write(f":CHANnel{channel}:SCALe {volts_per_div}")
 
-    def channel_offset(self, channel: int, offset: float):
+    def _scpi_channel_offset(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        offset: float = 0
+    ) -> None:
+        """
+        Sets the offset for given channel
+
+        Args:
+            <channel>       1|2|3|4
+            <offset>        float
+        """
+
+        logger.info(f"Sets channel {channel} to offset {offset}")
+
         self.write(f":CHANnel{channel}:OFFSet {offset}")
 
-    def channel_bandwidth(self, channel: int, bandwidth_limit: str):
-        self.write(f":CHANnel{channel}:BWLimit {bandwidth_limit}")
+    def _scpi_channel_bandwidth(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        bandwidth_limit: Literal["20M", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Sets the bandwidth for given channel
 
-    def channel_label(self, channel: int, label: str):
-        if label:
-            self.write(f":CHANnel{channel}:LABel {label}")
+        Args:
+            <channel>   1|2|3|4
+            <offset>    20M|OFF
+        """
+
+        logger.info(f"Sets channel {channel} bandwidth to {bandwidth_limit}")
+
+        self.write(f":CHANnel{channel}:BWLimit {bandwidth_limit}")
 
     def channel_probe(self, channel: int, attenuation: float):
         self.write(f":CHANnel{channel}:PROBe {attenuation}")
