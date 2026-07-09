@@ -38,15 +38,15 @@ class OWON_XDM1000:
         Configure the device.
 
         Args:
-            mode:   Sets the mode 
+            <mode>  Sets the mode 
                     [V|A]
             
-            range:  Range is kind of a stupid name and should be the
+            <range> Range is kind of a stupid name and should be the
                     expected voltage which should be measured, as steps 
                     are different with every dmm
                     [0 = AUTO]
 
-            speed:  Apperently most of DMMs do have speeds
+            <speed> Apperently most of DMMs do have speeds
                     [SLOW|MID|FAST]
         """
 
@@ -102,7 +102,7 @@ class OWON_XDM1000:
         Gets multiple measurement values.
 
         Args:
-            samples:    Store for a number of samples before returning
+            <samples>   Store for a number of samples before returning
 
         Returns:
             List of measured values.
@@ -141,7 +141,7 @@ class OWON_XDM1000:
         Enables verious scenarious
 
         Args:
-            scenario:   STAT    sets the display to a statistic mode
+            <scenario>  STAT    sets the display to a statistic mode
         """
         ...
 
@@ -178,6 +178,7 @@ class OWON_XDM1000:
         max_limit: float = 0.0,
         limit: int = 200,
     ):
+
         values = self.fetch_storage(samples=limit)
 
         return plot_data(

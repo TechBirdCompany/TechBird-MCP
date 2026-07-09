@@ -405,35 +405,26 @@ class Siglent_SDS2000:
 
     def _scpi_measure_item(self, 
         position: Literal[1, 2, 3, 4, 5] = 1, 
-        parameter: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
+        parameter: Literal["MIN", "MAX", "PKPK", "RMS"] = "RMS"
     ) -> None:
         """
         Measure a specific item on the oscilloscope.
 
         OFF is not supported with the Siglent, pelase use respective function
         
-        Internal parameter:
-            {PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
-            TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
-            VSP|RPRE|PER|FREQ|TMAX|TMIN|PWID|NWID|DUTY|NDU
-            TY|WID|NBWID|DELAY|TIMEL|RISE|FALL|RISE10T90|FALL9
-            0T10|CCJ|PAREA|NAREA|AREA|ABSAREA|CYCLES|REDGE
-            S|FEDGES|EDGES|PPULSES|NPULSES|PHA|SKEW|FRR|F
-            RF|FFR|FFF|LRR|LRF|LFR|LFF|PACArea|NACArea|ACArea|A
-            BSACArea|PSLOPE|NSLOPE|TSR|TSF|THR|THF}
-        
         Args:
             <position>  Position of the measurment
             <parameter> Type of measurment
-        
+                        PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
+                        TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
+                        VSP|RPRE|PER|FREQ|TMAX|TMIN|PWID|NWID|DUTY|NDU
+                        TY|WID|NBWID|DELAY|TIMEL|RISE|FALL|RISE10T90|FALL9
+                        0T10|CCJ|PAREA|NAREA|AREA|ABSAREA|CYCLES|REDGE
+                        S|FEDGES|EDGES|PPULSES|NPULSES|PHA|SKEW|FRR|F
+                        RF|FFR|FFF|LRR|LRF|LFR|LFF|PACArea|NACArea|ACArea|A
+                        BSACArea|PSLOPE|NSLOPE|TSR|TSF|THR|THF
         """
-        if parameter == "OFF":
-            logger.warning(f"OFF is not supported, please use respective function")
 
-        if position > 5:
-            logger.warning(f"Scope does only have 5 positions in the bottom area")
-            return
-        
         logger.debug(f"Set measurment position {position} to {parameter}")
 
         return self.write(f":MEASure:ADVanced:P{position}:TYPE {parameter}")

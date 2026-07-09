@@ -10,19 +10,19 @@ from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
 from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
 
 from devices.electronic_load.eload_protocol import eload
-from devices.electronic_load.easttester_et54.easttester_et54 import EastTester_ET54
+from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
 from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
 
 
 DEVICES = [
     #(scope, RUS_HMO3000),
     #(scope, Siglent_SDS2000),
-    (scope, RIGOL_MSO1000),
+    #(scope, RIGOL_MSO1000),
 
     #(dmm, OWON_XDM1000),
     #(dmm, RIGOL_DMM800),
 
-    #(eload, EastTester_ET54),
+    (eload, EASTTESTER_ET54),
     #(eload, PeakTech_2275),
 ]
 

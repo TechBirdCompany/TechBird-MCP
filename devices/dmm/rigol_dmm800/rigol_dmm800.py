@@ -450,8 +450,6 @@ class RIGOL_DMM800:
 
         self.calculate_average_state("OFF")
 
-
-
     def measure_and_plot_voltage(
         self,
         voltage_range,
@@ -582,87 +580,94 @@ class RIGOL_DMM800:
         )
     
     def setup(
-            self,
-            mode: str = "V",
-            range: float = 230,
-            speed: str = "HIGH",
-        ) -> None:
-            """
-            Configure the Rigol DMM.
+        self,
+        mode: Literal["V", "A"] = "V",
+        range: float = 0,
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
+    ) -> None:
+        """
+        Configure the Rigol DMM.
 
-            Args:
-                mode:   V or A
-                range:  Expected maximum measurement value
-                speed:  LOW, MID or HIGH
-            """
+        Args:
+            mode:   V or A
+            range:  Expected maximum measurement value
+            speed:  LOW, MID or HIGH
+        """
 
-            mode = mode.upper()
-            speed = speed.upper()
+        mode = mode.upper()
+        speed = speed.upper()
 
-            speed_map = {
-                "LOW": "SLOW",
-                "MID": "MEDIUM",
-                "HIGH": "FAST",
-            }
+        speed_map = {
+            "LOW": "SLOW",
+            "MID": "MEDIUM",
+            "HIGH": "FAST",
+        }
 
-            if speed not in speed_map:
-                raise ValueError(
-                    f"Unsupported speed '{speed}'. "
-                    "Use LOW, MID or HIGH."
-                )
-
-            rigol_speed = speed_map[speed]
-
-            if mode == "V":
-
-                range_val = self.get_voltage_range(range)
-
-                numeric_range = {
-                    "100mV": 0.1,
-                    "1V": 1,
-                    "10V": 10,
-                    "100V": 100,
-                    "1000V": 1000,
-                }[range_val]
-
-                resolution = (
-                    numeric_range *
-                    ppm_map[rigol_speed]
-                )
-
-                self.configure_voltage_dc(
-                    range_val,
-                    "DEF",
-                    f"{resolution:.6E}"
-                )
-
-            elif mode == "A":
-
-                logger.warning(
-                    "Current mode setup not yet implemented."
-                )
-
-            else:
-                raise ValueError(
-                    f"Unsupported mode '{mode}'. "
-                    "Use V or A."
-                )
-
-            self.mode = mode
-            self.range = range
-            self.speed = speed
-
-            logger.info(
-                f"DMM configured: "
-                f"mode={mode}, "
-                f"range={range}, "
-                f"speed={speed}"
+        if speed not in speed_map:
+            raise ValueError(
+                f"Unsupported speed '{speed}'. "
+                "Use LOW, MID or HIGH."
             )
 
-    def set_display(self) -> None:
+        rigol_speed = speed_map[speed]
+
+        if mode == "V":
+
+            range_val = self.get_voltage_range(range)
+
+            numeric_range = {
+                "100mV": 0.1,
+                "1V": 1,
+                "10V": 10,
+                "100V": 100,
+                "1000V": 1000,
+            }[range_val]
+
+            resolution = (
+                numeric_range *
+                ppm_map[rigol_speed]
+            )
+
+            self.configure_voltage_dc(
+                range_val,
+                "DEF",
+                f"{resolution:.6E}"
+            )
+
+        elif mode == "A":
+
+            logger.warning(
+                "Current mode setup not yet implemented."
+            )
+
+        else:
+            raise ValueError(
+                f"Unsupported mode '{mode}'. "
+                "Use V or A."
+            )
+
+        self.mode = mode
+        self.range = range
+        self.speed = speed
+
+        logger.info(
+            f"DMM configured: "
+            f"mode={mode}, "
+            f"range={range}, "
+            f"speed={speed}"
+        )
+
+    def set_display(
+        self,
+        scenario: Literal["STAT"]
+    ) -> None:
         """
-        Compatibility wrapper for the OWON display-control API.
+        Enables verious scenarious
+
+        Args:
+            scenario:   STAT    sets the display to a statistic mode
         """
+        
         logger.info("Rigol DMM display control is not exposed via this adapter")
 
     def get_screenshot(
@@ -726,4 +731,34 @@ class RIGOL_DMM800:
             nominal_value=nominal_value,
             min_limit=min_limit,
             max_limit=max_limit,
+        )
+    
+    def fetch_single(
+        self
+    ) -> float:
+        """
+        Gets the current measurement value.
+
+        Returns:
+            Returns the current value
+        """   
+
+        return self._scpi_read()
+    
+    def fetch_storage(
+        self,
+        samples: int = 200,
+    ) -> list[float]:
+        """
+        Gets multiple measurement values.
+
+        Args:
+            samples:    Store for a number of samples before returning
+
+        Returns:
+            List of measured values.
+        """
+
+        return self._scpi_fetch_storage(
+            samples=samples
         )

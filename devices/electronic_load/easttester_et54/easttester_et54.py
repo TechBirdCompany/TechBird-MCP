@@ -8,7 +8,7 @@ from loguru import logger
 from .channel import channel
 
 
-class EastTester_ET54:
+class EASTTESTER_ET54:
     """EastTester ET54 Series Electronic Load.
     
     Multi-channel electronic load controller supporting 1 or 2 channel models.
@@ -91,7 +91,7 @@ class EastTester_ET54:
         logger.info(f"ET54 initialized: {self.idn['model']} with {len(self.Channels)} channel(s)")
 
     @classmethod
-    def auto_connect(cls, **kwargs: Any) -> "EastTesterET54":
+    def auto_connect(cls, **kwargs: Any) -> "EASTTESTER_ET54":
         """Automatically detect and connect to first available ET54 device."""
         
         logger.info("Auto-detecting ET54 electronic load on serial ports")
@@ -290,7 +290,11 @@ class EastTester_ET54:
     # =========================================
 
 
-    def set_mode(self, mode: str = "CC", channel: int = 1) -> None:
+    def set_mode(
+        self,
+        mode: str = "CC",
+        channel: Optional[int] = None,
+    ) -> None:
         """Set load operating mode on selected channel.
 
         Args:
@@ -306,9 +310,11 @@ class EastTester_ET54:
         logger.info(f"Setting CH{channel} mode to {mode}")
         self.Channels[channel - 1].set_function(mode)
 
-    def set_current(self, 
-                    current: float, 
-                    channel: int = 1,) -> None:
+    def set_current(
+        self,
+        current: float,
+        channel: Optional[int] = None,
+    ) -> None:
         """
         Set current on selected channel.
 
@@ -330,8 +336,8 @@ class EastTester_ET54:
 
     def fetch(
         self,
-        channel: int = 1,
-    ) -> Optional[tuple[float, float]]:
+        channel: Optional[int] = None,
+    ) -> tuple[float, float]:
         """
         Read voltage and current from selected channel.
 
@@ -347,3 +353,16 @@ class EastTester_ET54:
         current = ch.get_current()
 
         return (float(voltage),float(current))
+    
+    def get_load_state(
+        self
+    ) -> bool:
+        """
+        Query load state.
+
+        Returns:
+            State of load 
+            [TRUE = ON | FALSE = OFF]
+        """
+
+        pass # Missing

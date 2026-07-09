@@ -347,7 +347,9 @@ class RUS_HMO3000:
     ) -> None:
         """
         Set the timebase to the desired setting
-        1E-9 to 50
+        
+        Args:
+            <sec_per_div>        1E-9 to 50
         """
 
         if not (1E-9 <= sec_per_div <= 50):
@@ -366,6 +368,10 @@ class RUS_HMO3000:
         """
         Sets trigger level. Level depends on the scale.
         So take care of the corret level
+
+        Args:
+            <channel>   1|2|3|4
+            <level>     float
         """
 
         logger.debug(f"Setting trigger edge level to {level} V")
