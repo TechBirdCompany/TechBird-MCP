@@ -1,5 +1,6 @@
 from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
 from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
+from devices.scope.rigol_mso1000.rigol_mso1000 import Rigol_MSO1000
 
 from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
 from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
@@ -34,5 +35,22 @@ def main():
         single=True
     )
 
+def fetch_rigol_screenshot(resource: str, filename: str = "rigol", suffix: str = "screenshot"):
+    """Create a screenshot from the Rigol scope and return the saved path."""
+    scope = Rigol_MSO1000(resource)
+    try:
+        path = scope.save_screenshot(filename=filename, suffix=suffix)
+        logger.info(f"Saved Rigol screenshot to {path}")
+        return path
+    finally:
+        scope.close()
+
 if __name__ == "__main__":
+
+    fetch_rigol_screenshot(
+        resource="TCPIP0::192.168.1.63::5555::SOCKET",
+        filename="rigol_scope",
+        suffix="capture"
+    )
+
     main()
