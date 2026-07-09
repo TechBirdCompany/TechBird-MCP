@@ -3,6 +3,7 @@ import inspect
 from devices.scope.scope_protocol import scope
 from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
 from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
+from devices.scope.rigol_mso1000.rigol_mso1000 import RIGOL_MSO1000
 
 from devices.dmm.dmm_protocol import dmm
 from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
@@ -16,9 +17,10 @@ from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
 DEVICES = [
     #(scope, RUS_HMO3000),
     #(scope, Siglent_SDS2000),
+    (scope, RIGOL_MSO1000),
 
-    (dmm, OWON_XDM1000),
-    (dmm, RIGOL_DMM800),
+    #(dmm, OWON_XDM1000),
+    #(dmm, RIGOL_DMM800),
 
     #(eload, EastTester_ET54),
     #(eload, PeakTech_2275),

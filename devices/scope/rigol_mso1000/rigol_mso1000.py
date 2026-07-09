@@ -9,7 +9,7 @@ import pyvisa
 from loguru import logger
 
 
-class Rigol_MSO1000:
+class RIGOL_MSO1000:
     def __init__(self, resource):
         """
         resource examples:
@@ -99,6 +99,16 @@ class Rigol_MSO1000:
     # ---------------------------
     # SCPI Commands
     # ---------------------------
+
+    def _scpi_identify(self) -> str:
+        """
+        Returns IDN
+        """
+
+        logger.debug(f"Querying IDN")
+
+        return self.query("*IDN?")
+    
     def _scpi_display_clear(self) -> None:
         """
         Clears Display
@@ -222,134 +232,257 @@ class Rigol_MSO1000:
 
         self.write(f":CHANnel{channel}:BWLimit {bandwidth_limit}")
 
-    def channel_probe(self, channel: int, attenuation: float):
+    def _scpi_channel_probe(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        attenuation: Literal["0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2", "5", "10", "20", "50", "100", "200", "500", "1000"] = 10
+    ) -> None:
+        """
+        Sets the attenuation for given channel
+
+        Args:
+            <channel>       1|2|3|4
+            <attenuation>   0.01|0.02|0.05|0.1|0.2|0.5|1|2|5|10|20|50|100|200|500|1000
+        """
+
+        logger.info(f"Set channel {channel} to attenuation {attenuation}")
+
         self.write(f":CHANnel{channel}:PROBe {attenuation}")
 
-    def channel_unit(self, channel: int, unit: str):
+    def _scpi_channel_unit(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1, 
+        unit: Literal["VOLTage", "WATT", "AMPere", "UNKNown"] = "VOLTage"
+    ) -> None:
+        """
+        Sets the unit of given channel
+
+        Args:
+            <channel>       1|2|3|4
+            <unit>          VOLTage|WATT|AMPere|UNKNown
+        """
+        logger.info(f"Set channel {channel} to {unit}")
+
         self.write(f":CHANnel{channel}:UNIT {unit}")
 
-    def trigger_edge_source(self, channel: int):
+    def _scpi_trigger_edge_source(
+        self, 
+        channel: int
+    ) -> None:
+        """
+        Sets the trigger source to given channel
+
+        Args:
+            <channel>       1|2|3|4            
+        """
+
+        logger.info(f"Set trigger to channel {channel}")
+
         self.write(f":TRIGger:EDGe:SOURce CHANnel{channel}")
 
-    def trigger_edge_level(self, level: float):
+    def _scpi_trigger_edge_level(self, level: float):
+        """
+        Set trigger level
+
+        Args:
+            <level>     float
+        """
+
+        logger.info(f"Set trigger level to {level}")
+
         self.write(f":TRIGger:EDGe:LEVel {level}")
 
-    def timebase_main_scale(self, sec_per_div: float):
+    def _scpi_timebase_main_scale(
+        self, 
+        sec_per_div: float
+    ) -> None:
+        """
+        Sets timebase
+
+        Args:
+            <sec_per_div>   
+        """
+
+        logger.info(f"Set Timebase to {sec_per_div}")
+
         self.write(f":TIMebase:MAIN:SCALe {sec_per_div}")
 
-    def measurement_clear(self):
+    def _scpi_measurement_clear(self) -> None:
+        """
+        Clears measurment
+        """
+
         self.write(":MEASure:CLEar")
 
-    def measurement_statistics_display(self, state: bool):
-        self.write(f":MEASure:STATistic:DISPlay {'ON' if state else 'OFF'}")
+    def _scpi_measurement_statistics_display(
+        self, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Activate statistics vor measurment
+        """
 
-    def measurement_statistics_reset(self):
+        logger.info(f"Sets statistics measurment to {state}")
+
+        self.write(f":MEASure:STATistic:DISPlay {state}")
+
+    def _scpi_measurement_statistics_reset(self):
+        """
+        Resets statistics
+        """
+
+        logger.info(f"Resets statistics")
+
         self.write(":MEASure:STATistic:RESet")
 
-    def measurement_source(self, channel: int):
+    def _scpi_measurement_source(
+        self, 
+        channel: Literal[1, 2, 3, 4] = 1
+    ) -> None:
+        """
+        Sets source for measurment
+
+        Args:
+            <channel>       1|2|3|4                    
+        """
+
+        logger.info(f"Set source of measurment")
+
         self.write(f":MEASure:SOURce CHANnel{channel}")
 
-    def measurement_item(self, position: int, measurement_type: str):
-        self.write(f":MEASure:ITEM {position},{measurement_type}")
+    def _scpi_measurement_item(
+        self, 
+        channel: int, 
+        measurement_type: Literal["VMAX", "VMIN", "VPP", "VRMS"]
+    ) -> None:
+        """
+        Choose the measurment item at given position
 
-    def measurement_statistics_item(self, position: int):
-        cmd = f":MEASure:STATistic:ITEM? {position}"
-        logger.debug(f"Get count from statistics at position {position} -> {cmd}")
-        return self.query(cmd)
+        Args:
+            <channel>               1|2|3|4
+            <measurment_type>       VMAX|VMIN|VPP|VTOP|VBASe|VAMP|VAVG|
+                                    VRMS|OVERshoot|PREShoot|MARea|MPARea|
+                                    PERiod|FREQuency|RTIMe|FTIMe|PWIDth|
+                                    NWIDth|PDUTy|NDUTy|RDELay|FDELay|
+                                    RPHase|FPHase|TVMAX|TVMIN|PSLEWrate|
+                                    NSLEWrate|VUPper|VMID|VLOWer|VARIance|
+                                    PVRMS|PPULses|NPULses|PEDGes|NEDGes
+        """
+        self.write(f":MEASure:ITEM {measurement_type},{channel}")
 
-    def run(self):
-        cmd = ":RUN"
-        logger.debug(f"Starting acquisition -> {cmd}")
-        self.write(cmd)
+    def _scpi_run(self) -> None:
+        """
+        Sets the device in run mode
+        """
 
-    def stop(self):
-        cmd = ":STOP"
-        logger.debug(f"Stopping acquisition -> {cmd}")
-        self.write(cmd)
+        logger.debug(f"Starting acquisition")
+
+        self.write(":RUN")
+
+    def _scpi_stop(self) -> None:
+        """
+        Sets the device in stop mode
+        """
+        
+        logger.debug(f"Stopping acquisition")
+
+        self.write(":STOP")
 
     # ---------------------------
-    # API methods
+    # API Commands
     # ---------------------------
-    def identify(self):
-        cmd = "*IDN?"
-        logger.debug(f"Querying ID -> {cmd}")
-        return self.query(cmd)
 
-    def reset(self):
-        """
-        Clears persistence, statistics and measurements.
-        """
-        for i in range(1, 5):
-            self.channel_display(i, False)
+    def identify(
+        self
+    ) -> str:
+        
+        self._scpi_identify()
 
-        self.measurement_clear()
-        self.measurement_statistics_display(False)
-        self.measurement_statistics_reset()
-        self.display_clear()
-        time.sleep(1)
-
-    def set_resolution(self, bit: int):
-        """
-        Configure acquisition resolution.
-        The Rigol DS/MSO1000Z series supports NORMal, AVERages, PEAK and HRESolution.
-        """
-        mode = "HRESolution" if bit >= 10 else "NORMal"
-        logger.debug(f"Setting acquisition mode to {mode}")
-        self.acquire_type(mode)
-
-    def set_persistence(self, duration: float):
-        """
-        Configure display persistence.
-        """
-        self.display_persistence(duration)
+    def set_resolution(
+        self,
+        bit: Literal[8, 16] = 16
+    ) -> None:
+        
+        if bin == 8:
+            self._scpi_acquire_type(
+                mode="NORMal"
+            )
+        else:
+            self._scpi_acquire_type(
+                model="HRESolution"
+            )
 
     def set_channel(
         self,
+        channel: Literal[1, 2, 3, 4] = 1,
+        enable: Literal["ON", "OFF"] = "ON",
+        attenuation: float = 10,
+        unit: Literal["V", "A"] = "V",
+        label: str = "",
+        coupling: Literal["AC", "DC"] = "DC",
+        bandwidth_limit: Literal["FULL", "20MHz"] = "FULL",
+        volts_per_div: float = 5,
+        position: float = 0
+    ) -> None:
+        pass    # no moode to add that....
+
+    def set_trigger(
+        self,
         channel: int,
-        enable: bool,
-        attenuation: float,
-        unit: str,
-        label: str,
-        coupling: str,
-        bandwidth_limit: str,
-        volts_per_div: float,
-        position: float,
-    ):
-        """
-        Configure a channel in the same style as the other scope wrappers.
-        """
-        if not enable:
-            self.channel_display(channel, False)
-            return
+        mode: str,
+        level: float
+    ) -> None:
+        
+        self._scpi_trigger_edge_source(
+            channel=channel
+        )
 
-        self.channel_display(channel, True)
-        self.channel_coupling(channel, coupling)
-        self.channel_scale(channel, volts_per_div)
-        self.channel_offset(channel, position)
-        self.channel_bandwidth(channel, bandwidth_limit)
-        self.channel_label(channel, label)
-        self.channel_probe(channel, attenuation)
-        self.channel_unit(channel, unit)
+        self._scpi_trigger_edge_level(
+            level=level
+        )
 
-    def set_trigger(self, channel: int, mode: str, level: float):
-        self.trigger_edge_source(channel)
-        self.trigger_edge_level(level)
+    def set_timebase(
+        self,
+        sec_per_div: float
+    ) -> None:
+        pass    # Needs implementation
 
-    def set_timebase(self, sec_per_div: float):
-        self.timebase_main_scale(sec_per_div)
+    def set_persistence(
+        self,
+        duration: float = 0
+    ) -> None:
+        
+        if duration == 0:
+            duration = "MIN"
+        
+        if duration == -1:
+            duration = "INFinite"
 
-    def set_measurement(self, position: int, channel: int, measurement_type: str):
-        if measurement_type == "OFF":
-            self.measurement_item(position, "OFF")
-            return
+        self._scpi_display_persistence(
+            duration=duration
+        )
 
-        self.measurement_source(channel)
-        self.measurement_item(position, measurement_type)
+    def reset(
+        self
+    ) -> None:
 
-    def get_count(self, position: int) -> float:
-        return float(self.measurement_statistics_item(position))
+        pass    # needs implementation
 
-    def save_screenshot(self, filename: str, suffix: str) -> str:
+    def set_measurement(
+        self,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: Literal[1, 2, 3, 4] = 1,
+        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
+    ) -> None:
+
+        pass    # needs implementatin
+
+    def save_screenshot(
+        self,
+        filename: str = "TEMP",
+        suffix: str = ""
+    ) -> None:
+        
         os.makedirs("measurements", exist_ok=True)
 
         if filename:
@@ -399,4 +532,25 @@ class Rigol_MSO1000:
 
         if data:
             path.write_bytes(data)
-        return str(path)
+
+    def run(
+        self
+    ) -> None:
+        
+        self._scpi_run()
+
+    def stop(
+        self
+    ) -> None:
+        
+        self._scpi_stop()
+
+    def get_count(
+        self,
+        position: Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> int:
+        pass    # Keine Ahnung wie das geht
+
+    def persistence_clear(self) -> None:
+        
+        self._scpi_display_clear()
