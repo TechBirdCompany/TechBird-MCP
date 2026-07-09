@@ -1,4 +1,4 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Literal
 
 
 class eload(Protocol):
@@ -15,7 +15,8 @@ class eload(Protocol):
         ...
 
     def load_on(
-        self
+        self,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Enable electronic load.
@@ -23,7 +24,8 @@ class eload(Protocol):
         ...
 
     def load_off(
-        self
+        self,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Disable electronic load.
@@ -31,7 +33,8 @@ class eload(Protocol):
         ...
 
     def get_load_state(
-        self
+        self,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> bool:
         """
         Query load state.
@@ -44,17 +47,17 @@ class eload(Protocol):
 
     def set_mode(
         self,
-        mode: str = "CC",
-        channel: Optional[int] = None,
+        mode: Literal["CC"],
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Configure operating mode.
 
         Args:
-            mode:       Mode of channel for eload
+            <mode>      Mode of channel for eload
                         [CC]
 
-            channel:    Optional parameter as most do have only one channel
+            <channel>   Optional parameter as most do have only one channel
                         But beside this; Number of channel
         """
         ...
@@ -62,31 +65,31 @@ class eload(Protocol):
     def set_current(
         self,
         current: float,
-        channel: Optional[int] = None,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Configure load current.
 
         Args:
-            current:    Set current for channel... as currently on CC is defined
+            <current>    Set current for channel... as currently on CC is defined
                         This definition need to be changed, when other modes should
                         be supported
                         [CC]
 
-            channel:    Optional parameter as most do have only one channel
+            <channel>    Optional parameter as most do have only one channel
                         But beside this; Number of channel
         """
         ...
 
     def fetch(
         self,
-        channel: Optional[int] = None,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> tuple[float, float]:
         """
         Read measurement values.
 
         Args:
-            channel:    Optional parameter as most do have only one channel
+            <channel>   Optional parameter as most do have only one channel
                         But beside this; Number of channel
 
         Returns:
