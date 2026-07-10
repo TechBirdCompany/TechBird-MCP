@@ -4,6 +4,7 @@ import socket
 import time
 from pathlib import Path
 from typing import Literal
+from PIL import Image, ImageDraw, ImageFont
 
 import pyvisa
 from loguru import logger
@@ -25,7 +26,7 @@ class RIGOL_MSO1000:
                 self.sock = self._open_socket(resource)
             else:
                 self.inst = self.rm.open_resource(resource)
-                self.inst.timeout = 5000
+                self.inst.timeout = 30000
                 self.inst.write_termination = "\n"
                 self.inst.read_termination = "\n"
         except Exception as exc:
@@ -42,8 +43,8 @@ class RIGOL_MSO1000:
             raise ValueError(f"Unsupported Rigol socket resource: {resource}")
         host = match.group(1)
         port = int(match.group(2))
-        sock = socket.create_connection((host, port), timeout=5)
-        sock.settimeout(5)
+        sock = socket.create_connection((host, port), timeout=30)
+        sock.settimeout(30)
         return sock
 
     def write(self, cmd):
@@ -389,6 +390,198 @@ class RIGOL_MSO1000:
         self.write(":STOP")
 
     # ---------------------------
+    # Helper Commands
+    # ---------------------------
+
+    def add_scope_labels(
+        self,
+        image_path: str,
+        label1: str = "",
+        label2: str = "",
+        label3: str = "",
+        label4: str = "",
+    ) -> str:
+
+        from pathlib import Path
+        from PIL import Image, ImageDraw, ImageFont
+
+        img = Image.open(image_path).convert("RGB")
+        draw = ImageDraw.Draw(img)
+
+        try:
+            font = ImageFont.truetype(
+                "C:/Windows/Fonts/segoeui.ttf",
+                12
+            )
+        except Exception:
+            font = ImageFont.load_default()
+
+        channels = [
+            (label1, (248, 252,   0)),  # CH1 Gelb
+            (label2, (  0, 252, 248)),  # CH2 Cyan
+            (label3, (245,   0, 245)),  # CH3 Magenta
+            (label4, (  0, 128, 248)),  # CH4 Blau
+        ]
+
+        pixels = img.load()
+
+        labels_to_draw = []
+
+        #
+        # Signalpositionen suchen
+        #
+        for text, target_color in channels:
+
+            if not text:
+                continue
+
+            matching_rows = []
+
+            for y in range(30, img.height - 30):
+
+                count = 0
+
+                for x in range(80, img.width - 120):
+
+                    r, g, b = pixels[x, y]
+
+                    if (
+                        abs(r - target_color[0]) < 30
+                        and abs(g - target_color[1]) < 30
+                        and abs(b - target_color[2]) < 30
+                    ):
+                        count += 1
+
+                #
+                # Horizontale Spur gefunden
+                #
+                if count > 150:
+                    matching_rows.append(y)
+
+            if not matching_rows:
+                continue
+
+            trace_y = int(sum(matching_rows) / len(matching_rows))
+
+            labels_to_draw.append(
+                {
+                    "text": text,
+                    "color": target_color,
+                    "trace_y": trace_y
+                }
+            )
+
+        #
+        # Labels von oben nach unten sortieren
+        #
+        labels_to_draw.sort(
+            key=lambda item: item["trace_y"]
+        )
+
+        #
+        # Kollisionserkennung
+        #
+        MIN_GAP = 4
+
+        last_bottom = -9999
+
+        for label in labels_to_draw:
+
+            bbox = draw.textbbox(
+                (0, 0),
+                label["text"],
+                font=font
+            )
+
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+
+            padding_x = 4
+            padding_y = 2
+
+            box_w = text_w + padding_x * 2
+            box_h = text_h + padding_y * 2
+
+            y = label["trace_y"] - box_h // 2
+
+            #
+            # Labels auseinander schieben
+            #
+            if y < last_bottom + MIN_GAP:
+                y = last_bottom + MIN_GAP
+
+            label["draw_y"] = y
+            label["box_w"] = box_w
+            label["box_h"] = box_h
+            label["text_w"] = text_w
+            label["text_h"] = text_h
+
+            last_bottom = y + box_h
+
+        #
+        # Labels zeichnen
+        #
+        for label in labels_to_draw:
+
+            x = 90
+
+            y = label["draw_y"]
+
+            box_w = label["box_w"]
+            box_h = label["box_h"]
+
+            draw.rounded_rectangle(
+                (
+                    x,
+                    y,
+                    x + box_w,
+                    y + box_h
+                ),
+                radius=2,
+                fill="black",
+                outline=label["color"],
+                width=1
+            )
+
+            center_y = y + box_h // 2
+
+            #
+            # Verbindungslinie zum eigentlichen Signal
+            #
+            if abs(center_y - label["trace_y"]) > 2:
+
+                draw.line(
+                    (
+                        x + box_w,
+                        center_y,
+                        x + box_w + 10,
+                        label["trace_y"]
+                    ),
+                    fill=label["color"],
+                    width=1
+                )
+
+            draw.text(
+                (
+                    x + 4,
+                    y + 2
+                ),
+                label["text"],
+                fill="white",
+                font=font
+            )
+
+        image_path = Path(image_path)
+
+        output_path = image_path.with_name(
+            f"{image_path.stem}_labeled{image_path.suffix}"
+        )
+
+        img.save(output_path)
+
+        return str(output_path)
+
+    # ---------------------------
     # API Commands
     # ---------------------------
 
@@ -498,10 +691,11 @@ class RIGOL_MSO1000:
 
         if self.sock is not None:
             try:
+                self.sock.settimeout(30)
                 self.sock.sendall(b":DISPlay:DATA?\n")
                 data = b""
                 while True:
-                    chunk = self.sock.recv(65536)
+                    chunk = self.sock.recv(1024 * 1024)
                     if not chunk:
                         break
                     data += chunk
@@ -514,8 +708,6 @@ class RIGOL_MSO1000:
                                 break
                         except Exception:
                             pass
-                    if b"\n" in data and len(data) > 16:
-                        break
                 if data:
                     path.write_bytes(data)
                 return str(path)
@@ -524,6 +716,8 @@ class RIGOL_MSO1000:
                 return str(path)
 
         try:
+            self.inst.timeout = 30000
+            self.inst.chunk_size = 20 * 1024 * 1024
             self.inst.write(":DISPlay:DATA?")
             data = self.inst.read_raw()
         except Exception as exc:
