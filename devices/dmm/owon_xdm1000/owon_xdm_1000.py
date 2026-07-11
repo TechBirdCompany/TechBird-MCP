@@ -191,13 +191,13 @@ class OWON_XDM1000:
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ) -> None:
+    ) -> str:
 
         values = self.fetch_storage(
             samples=limit
         )
 
-        return plot_data(
+        path = plot_data(
             x_data=list(range(len(values))),
             y_data=values,
             title=title,
@@ -208,3 +208,5 @@ class OWON_XDM1000:
             min_limit=min_limit,
             max_limit=max_limit,
         )
+
+        return path

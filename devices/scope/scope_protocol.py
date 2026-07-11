@@ -223,5 +223,9 @@ class scope(Protocol):
     ) -> None:
         """
         Sets label for channel
+
+        Args:
+            <channel>   1 to 4
+            <label>     Label for channel
         """
         ...

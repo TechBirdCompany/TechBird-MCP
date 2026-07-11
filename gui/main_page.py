@@ -1,89 +1,178 @@
 from nicegui import ui
+import os
 
-from gui.tabs.api_test import build_api_test_tab
-from gui.tabs.load_test import build_load_test_tab
-from gui.tabs.visuals.visuals import build_visuals_tab
+from gui.pages.scope_screenshot import (
+    build_scope_screenshot_page
+)
+
+from gui.pages.api_test import (
+    build_api_test_page
+)
+
+from gui.pages.load_test import (
+    build_load_test_page
+)
+
+from gui.widgets.console import (
+    build_console
+)
+
+from gui.pages.get_plot import (
+    build_get_plot_page
+)
+
 
 
 def build_main_page():
 
-    ui.label(
-        "TechBird MCP"
-    ).classes(
-        "text-h4"
-    )
+    #
+    # HEADER
+    #
 
-    with ui.card().classes("w-full"):
 
-        ui.label(
-            "Connected Devices"
-        )
-
-        with ui.row():
-
-            ui.input(
-                "Scope",
-                value="Siglent SDS2000"
-            )
-
-            ui.button(
-                "Connect"
-            )
-
-        with ui.row():
-
-            ui.input(
-                "DMM",
-                value="OWON XDM1000"
-            )
-
-            ui.button(
-                "Connect"
-            )
-
-        with ui.row():
-
-            ui.input(
-                "E-Load",
-                value="EASTTESTER ET54"
-            )
-
-            ui.button(
-                "Connect"
-            )
-
-    with ui.tabs().classes(
-        "w-full"
-    ) as tabs:
-
-        api_tab = ui.tab("API Test")
-        visual_tab = ui.tab("Visuals")
-        load_tab = ui.tab("Load Test")
-
-    with ui.tab_panels(
-        tabs,
-        value=api_tab
-    ).classes(
-        "w-full"
+    with ui.row().classes(
+        'w-full justify-between items-center'
     ):
 
-        with ui.tab_panel(api_tab):
-            build_api_test_tab()
+        ui.label(
+            'TechBird - Master Control Programm'
+        ).classes(
+            'text-h4'
+        )
 
-        with ui.tab_panel(visual_tab):
-            build_visuals_tab()
+        logo = ui.image(
+            'assets/TechBird_Logo.png'
+        ).style(
+            '''
+            width:100px;
+            height:100px;
+            '''
 
-        with ui.tab_panel(load_tab):
-            build_load_test_tab()
+        )
 
-    ui.separator()
 
-    ui.label(
-        "Console"
-    ).classes(
-        "text-h6"
-    )
+        logo.tooltip(
+            'Double click to exit'
+        )
 
-    ui.log().classes(
-        "w-full h-64"
-    )
+        logo.on(
+            'dblclick',
+            lambda: os._exit(0)
+        )
+
+
+    #
+    # BODY
+    #
+    with ui.row().classes(
+        'w-full'
+    ):
+
+        #
+        # NAVIGATION
+        #
+        with ui.card().style(
+            'width:250px; min-height:800px;'
+        ):
+
+            ui.label(
+                'Navigation'
+            ).classes(
+                'text-h6'
+            )
+
+            nav_scope = ui.button(
+                'Scope Screenshot'
+            ).classes(
+                'w-full'
+            )
+
+            nav_api = ui.button(
+                'API Test'
+            ).classes(
+                'w-full'
+            )
+
+            nav_load = ui.button(
+                'Load Test'
+            ).classes(
+                'w-full'
+            )
+
+
+            nav_plot = ui.button(
+                'DMM Plot'
+            ).classes(
+                'w-full'
+            )
+
+
+        #
+        # CONTENT
+        #
+        content = ui.column().classes(
+            'flex-grow'
+        )
+
+        def show_scope():
+
+            content.clear()
+
+            with content:
+                build_scope_screenshot_page()
+
+        def show_api():
+
+            content.clear()
+
+            with content:
+                build_api_test_page()
+
+        def show_load():
+
+            content.clear()
+
+            with content:
+                build_load_test_page()
+
+
+        def show_plot():
+
+            content.clear()
+
+            with content:
+                build_get_plot_page()
+
+
+        nav_scope.on(
+            'click',
+            show_scope
+        )
+
+        nav_api.on(
+            'click',
+            show_api
+        )
+
+        nav_load.on(
+            'click',
+            show_load
+        )
+
+
+        nav_plot.on(
+            'click',
+            show_plot
+        )
+
+
+        #
+        # Startseite
+        #
+        with content:
+            build_scope_screenshot_page()
+
+    #
+    # CONSOLE
+    #
+    build_console()

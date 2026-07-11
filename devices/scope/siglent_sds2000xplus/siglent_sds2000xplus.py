@@ -743,7 +743,7 @@ class Siglent_SDS2000:
         Sets label for channel
         """
 
-        if label == None:
+        if label == None or label == "":
             self._scpi_set_channel_label_on_off(
                 channel=channel,
                 state="OFF"

@@ -784,7 +784,7 @@ class RUS_HMO3000:
         Sets label for channel
         """
 
-        if label == "None":
+        if label == "None" or label == "":
             self._scpi_channel_label_state(
                 channel=channel,
                 state="OFF"

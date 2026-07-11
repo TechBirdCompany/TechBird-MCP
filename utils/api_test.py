@@ -91,13 +91,18 @@ def verify_protocol(
         "mismatches": len(mismatches),
     }
 
-if __name__ == "__main__":
+def run_api_test():
+
     summary = []
 
     for protocol_cls, implementation_cls in DEVICES:
+
         print(f"Checking {implementation_cls.__name__}...")
 
-        result = verify_protocol(protocol_cls, implementation_cls)
+        result = verify_protocol(
+            protocol_cls,
+            implementation_cls
+        )
 
         summary.append({
             "device": implementation_cls.__name__,
@@ -107,7 +112,11 @@ if __name__ == "__main__":
     print("\n========== DEVICE OVERVIEW ==========")
 
     for entry in summary:
-        issues = entry["missing"] + entry["mismatches"]
+
+        issues = (
+            entry["missing"]
+            + entry["mismatches"]
+        )
 
         print(
             f"{entry['device']:<25} "
@@ -117,3 +126,7 @@ if __name__ == "__main__":
         )
 
     print("\nAll protocol checks done")
+
+
+if __name__ == "__main__":
+    run_api_test()
