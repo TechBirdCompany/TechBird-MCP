@@ -13,16 +13,16 @@ class dmm(Protocol):
         Configure the device.
 
         Args:
-            mode:   Sets the mode 
-                    [V|A]
+            <mode>   Sets the mode 
+                     [V|A]
             
-            range:  Range is kind of a stupid name and should be the
-                    expected voltage which should be measured, as steps 
-                    are different with every dmm
-                    [0 = AUTO]
+            <range>  Range is kind of a stupid name and should be the
+                     expected voltage which should be measured, as steps 
+                     are different with every dmm
+                     [0 = AUTO]
 
-            speed:  Apperently most of DMMs do have speeds
-                    [SLOW|MID|FAST]
+            <speed>  Apperently most of DMMs do have speeds
+                     [SLOW|MID|FAST]
         """
         ...
 
@@ -45,7 +45,7 @@ class dmm(Protocol):
         Gets multiple measurement values.
 
         Args:
-            samples:    Store for a number of samples before returning
+            <samples>    Store for a number of samples before returning
 
         Returns:
             List of measured values.
@@ -60,25 +60,19 @@ class dmm(Protocol):
         Enables verious scenarious
 
         Args:
-            scenario:   STAT    sets the display to a statistic mode
+            <scenario>   STAT    sets the display to a statistic mode
         """
         ...
 
-    def get_screenshot(
+    def save_screenshot(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
+        filename: str = "TEMP"
     ) -> None:
         """
         Retrieves a screenshot.
 
         Args:
-            folder: Folder for screenshot... should actually be hardcoded
-
-            prefix: Should be suffix... but ads to the name for unified nameing
-
-            label:  Label of the measured domain or signal
+            <filename>     Label for the measured signal
         """
         ...
 
@@ -86,7 +80,7 @@ class dmm(Protocol):
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
@@ -96,12 +90,18 @@ class dmm(Protocol):
         Creates a plot from stored measurements.
 
         Args:
-            title:          Title of the plit
-            y_label:        y label...
-            suffix:         suffix for the filename
-            nominal_value:  Nominal value, will be displayed as center line
-            min_limit:      Minimal limit
-            max_limit:      Maximal limit
-            limit:          Limit to use for the fetch_storage function
+            <title>             Title of the plot
+
+            <y_label>           y label...
+
+            <filename>          suffix for the filename
+
+            <nominal_value>     Nominal value, will be displayed as center line
+
+            <min_limit>         Minimal limit
+
+            <max_limit>         Maximal limit
+
+            <limit>             Limit to use for the fetch_storage function
         """
         ...

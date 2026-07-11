@@ -697,10 +697,22 @@ class RUS_HMO3000:
         )
 
     def save_screenshot(
-        self, 
-        filename: str = "TEMP", 
-        suffix: str = ""
-    ) -> None:
+        self,
+        filename: str = "TEMP",
+    ) -> str:
+        """
+        Save screenshot and return path.
+
+        Args:
+            <filename>  Filename of the screenshot
+
+            <suffix1>   Additional suffix to unify with other screenshots or so
+
+            <suffix2>   Additional suffix to unify with other screenshots or so
+
+        Returns:
+            String to saved file
+        """
 
         logger.debug(
             "Saving screenshot"
@@ -722,7 +734,7 @@ class RUS_HMO3000:
 
             file_path = os.path.join(
                 "measurements",
-                f"{filename}_SCOPE_{suffix}.bmp"
+                f"{filename}.bmp"
             )
 
             with open(file_path, "wb") as fp:
@@ -736,6 +748,8 @@ class RUS_HMO3000:
             logger.exception(
                 f"Failed to save screenshot: {ex}"
             )
+
+            return file_path
 
     def persistence_clear(self) -> None:
         self.persistence_clear()
@@ -760,3 +774,28 @@ class RUS_HMO3000:
         self._scpi_set_timebase(
             sec_per_div=sec_per_div
         )
+
+    def set_label(
+        self,
+        channel: Literal[1, 2, 3, 4],
+        label: str
+    ) -> None:
+        """
+        Sets label for channel
+        """
+
+        if label == "None":
+            self._scpi_channel_label_state(
+                channel=channel,
+                state="OFF"
+            )
+        else:
+            self._scpi_channel_label_state(
+                channel=channel,
+                state="ON"
+            )
+
+            self._scpi_channel_label(
+                channel=channel,
+                label=label
+            )

@@ -12,9 +12,9 @@ class OWON_XDM1000:
     OVERHEAD_FACTOR = 1.5
 
     RATE_TO_INTERVAL = {
-        "FAST": 0.015 * OVERHEAD_FACTOR,
-        "MID":  0.020 * OVERHEAD_FACTOR,
-        "SLOW":  0.500 * OVERHEAD_FACTOR,
+        "F": 0.015 * OVERHEAD_FACTOR,   #FAST
+        "M":  0.020 * OVERHEAD_FACTOR,  #MID
+        "L":  0.500 * OVERHEAD_FACTOR,  #Low
     }
 
     def __init__(self):
@@ -22,17 +22,31 @@ class OWON_XDM1000:
 
         self.mode = "V"
         self.range = 230
-        self.speed = "HIGH"
+        self.speed = "F"
 
     # =========================================
-    # API Functions
+    # SCPI Ccommands
+    # =========================================
+
+    def _scpi_get_rate(
+        self
+    ) -> str:
+        """
+        Get the current rate of the DMM
+        """
+        rate = self.dmm.query("RATE?")
+        
+        logger.info(f"Current rate is {rate}")
+
+    # =========================================
+    # API Ccommands
     # =========================================
 
     def setup(
         self,
         mode: Literal["V", "A"] = "V",
         range: float = 0,
-        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
+        speed: Literal["L", "M", "F"] = "F",
     ) -> None:
         """
         Configure the device.
@@ -47,7 +61,7 @@ class OWON_XDM1000:
                     [0 = AUTO]
 
             <speed> Apperently most of DMMs do have speeds
-                    [SLOW|MID|FAST]
+                    [L|M|F]
         """
 
         mode = mode.upper()
@@ -78,7 +92,6 @@ class OWON_XDM1000:
             f"DMM configured: mode={mode}, "
             f"range={range}, speed={speed}"
         )
-
 
     def fetch_single(self) -> float:
         """
@@ -147,14 +160,15 @@ class OWON_XDM1000:
 
         logger.info("set_display() is not supported by the OWON XDM1041")
 
-    def get_screenshot(
+    def save_screenshot(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
+        filename: str = "TEMP"
     ) -> None:
         """
-        Get a screenshot of the current screen.
+       Retrieves a screenshot.
+
+        Args:
+            <filename>     Label for the measured signal
 
         Note:
             The OWON XDM1041 does not provide a remote screenshot
@@ -172,21 +186,23 @@ class OWON_XDM1000:
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ):
+    ) -> None:
 
-        values = self.fetch_storage(samples=limit)
+        values = self.fetch_storage(
+            samples=limit
+        )
 
         return plot_data(
             x_data=list(range(len(values))),
             y_data=values,
             title=title,
             y_label=y_label,
-            suffix=suffix,
+            filename=filename,
             unit=self.mode,
             nominal_value=nominal_value,
             min_limit=min_limit,

@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Literal
 from PIL import Image, ImageDraw, ImageFont
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
 
 import pyvisa
 from loguru import logger
@@ -18,8 +20,17 @@ class RIGOL_MSO1000:
         LAN: 'TCPIP0::192.168.1.100::INSTR'
         """
         self.rm = pyvisa.ResourceManager()
+        
         self.inst = None
         self.sock = None
+        
+        self.labels = {
+            "ch1": "",
+            "ch2": "",
+            "ch3": "",
+            "ch4": "",
+        }
+
         self._resource = resource
         try:
             if isinstance(resource, str) and "SOCKET" in resource.upper():
@@ -393,13 +404,24 @@ class RIGOL_MSO1000:
     # Helper Commands
     # ---------------------------
 
-    def add_scope_labels(
+    def __set_labels(
+        self,
+        channel: Literal[1, 2, 3, 4] = 1,
+        label: str = ""
+    ) -> None:
+        """
+        Sets label of channel
+
+        Args:
+            <channel>   1|2|3|4
+            <label>     str
+        """
+
+        self.labels[f"ch{channel}"] = label
+
+    def __add_scope_labels(
         self,
         image_path: str,
-        label1: str = "",
-        label2: str = "",
-        label3: str = "",
-        label4: str = "",
     ) -> str:
 
         from pathlib import Path
@@ -410,26 +432,28 @@ class RIGOL_MSO1000:
 
         try:
             font = ImageFont.truetype(
-                "C:/Windows/Fonts/segoeui.ttf",
+                "fonts/Inter-Regular.ttf",
                 12
             )
         except Exception:
             font = ImageFont.load_default()
 
+        channel_colors = [
+            (248, 252,   0),  # CH1 yellow
+            (  0, 252, 248),  # CH2 cyan
+            (245,   0, 245),  # CH3 magenta
+            (  0, 128, 248),  # CH4 blue
+        ]
+
         channels = [
-            (label1, (248, 252,   0)),  # CH1 Gelb
-            (label2, (  0, 252, 248)),  # CH2 Cyan
-            (label3, (245,   0, 245)),  # CH3 Magenta
-            (label4, (  0, 128, 248)),  # CH4 Blau
+            (self.labels[f"ch{i}"], color)
+            for i, color in enumerate(channel_colors, start=1)
         ]
 
         pixels = img.load()
 
         labels_to_draw = []
 
-        #
-        # Signalpositionen suchen
-        #
         for text, target_color in channels:
 
             if not text:
@@ -452,9 +476,6 @@ class RIGOL_MSO1000:
                     ):
                         count += 1
 
-                #
-                # Horizontale Spur gefunden
-                #
                 if count > 150:
                     matching_rows.append(y)
 
@@ -471,16 +492,10 @@ class RIGOL_MSO1000:
                 }
             )
 
-        #
-        # Labels von oben nach unten sortieren
-        #
         labels_to_draw.sort(
             key=lambda item: item["trace_y"]
         )
 
-        #
-        # Kollisionserkennung
-        #
         MIN_GAP = 4
 
         last_bottom = -9999
@@ -504,9 +519,6 @@ class RIGOL_MSO1000:
 
             y = label["trace_y"] - box_h // 2
 
-            #
-            # Labels auseinander schieben
-            #
             if y < last_bottom + MIN_GAP:
                 y = last_bottom + MIN_GAP
 
@@ -518,9 +530,6 @@ class RIGOL_MSO1000:
 
             last_bottom = y + box_h
 
-        #
-        # Labels zeichnen
-        #
         for label in labels_to_draw:
 
             x = 90
@@ -545,9 +554,6 @@ class RIGOL_MSO1000:
 
             center_y = y + box_h // 2
 
-            #
-            # Verbindungslinie zum eigentlichen Signal
-            #
             if abs(center_y - label["trace_y"]) > 2:
 
                 draw.line(
@@ -617,7 +623,7 @@ class RIGOL_MSO1000:
         volts_per_div: float = 5,
         position: float = 0
     ) -> None:
-        pass    # no moode to add that....
+        pass    # no mood to add that....
 
     def set_trigger(
         self,
@@ -673,17 +679,24 @@ class RIGOL_MSO1000:
     def save_screenshot(
         self,
         filename: str = "TEMP",
-        suffix: str = ""
-    ) -> None:
+    ) -> str:
+        """
+        Save screenshot and return path.
+
+        Args:
+            <filename>  Filename of the screenshot
+
+            <suffix1>   Additional suffix to unify with other screenshots or so
+
+            <suffix2>   Additional suffix to unify with other screenshots or so
+
+        Returns:
+            String to saved file
+        """
         
         os.makedirs("measurements", exist_ok=True)
 
-        if filename:
-            full_name = f"{filename}_SCOPE_{suffix}.png"
-        else:
-            full_name = f"SCOPE_{suffix}.png"
-
-        path = Path("measurements") / full_name
+        path = Path("measurements") / filename
 
         if self.sock is None and self.inst is None:
             logger.warning("No connection available to fetch Rigol screenshot")
@@ -727,6 +740,15 @@ class RIGOL_MSO1000:
         if data:
             path.write_bytes(data)
 
+        self.__add_scope_labels(
+            image_path=path
+        )
+
+        for labels in self.labels:
+            self.labels[labels] = None
+        
+        return path
+
     def run(
         self
     ) -> None:
@@ -748,3 +770,18 @@ class RIGOL_MSO1000:
     def persistence_clear(self) -> None:
         
         self._scpi_display_clear()
+
+    def set_label(
+        self,
+        channel: Literal[1, 2, 3, 4],
+        label: str
+    ) -> None:
+        """
+        Sets label for channel
+        """
+
+        self.__set_labels(
+            channel=channel,
+            label=label
+        )
+

@@ -127,6 +127,8 @@ class Siglent_SDS2000:
         with open(path, "wb") as f:
             f.write(data)
 
+        return path
+
     def _scpi_identify(self) -> str:
         """
         Identifies the device.
@@ -220,7 +222,7 @@ class Siglent_SDS2000:
             <offset>    Actual voltage of the origin of the channel
         """
 
-        logger.debug(f"Setting vertical offset for channel {channel} to {offset} V -> {cmd}")
+        logger.debug(f"Setting vertical offset for channel {channel} to {offset} V")
 
         self.write(f":CHANnel{channel}:OFFset {offset}")
 
@@ -297,7 +299,7 @@ class Siglent_SDS2000:
 
         logger.debug(f"Setting label text for channel {channel} to {text}")
         
-        self.write(f":CHANnel{channel}:LABel:TEXT {text}")
+        self.write(f':CHANnel{channel}:LABel:TEXT "{text}"')
 
     def _scpi_set_channel_unit(
         self, 
@@ -414,6 +416,7 @@ class Siglent_SDS2000:
         
         Args:
             <position>  Position of the measurment
+
             <parameter> Type of measurment
                         PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
                         TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
@@ -432,19 +435,20 @@ class Siglent_SDS2000:
     def _scpi_measure_source1(
         self, 
         position: Literal[1, 2, 3, 4, 5] = 1, 
-        source: Literal[1, 2, 3, 4] = 1
+        channel: Literal[1, 2, 3, 4] = 1
     ) -> None:
         """
         Set the source for the set position
 
         Args:
             <position>  1 to 5
-            <source>    1 to 4
+
+            <channel>    1 to 4
         """
         
-        logger.debug(f"Measuring source {source} on channel {position}")
+        logger.debug(f"Measuring source {channel} on channel {position}")
         
-        return self.write(f":MEASure:ADVanced:P{position}:SOURce1 C{source}")
+        return self.write(f":MEASure:ADVanced:P{position}:SOURce1 C{channel}")
 
     def _scpi_measure_on_off(
         self, 
@@ -456,6 +460,7 @@ class Siglent_SDS2000:
 
         Args:
             <position>  1 to 5
+
             <state>     ON|OFF
         """
 
@@ -544,8 +549,8 @@ class Siglent_SDS2000:
             coupling=coupling
         )
 
-        if bw == "20MHz": # Mapping
-            bw = "20M"
+        if bandwidth_limit == "20MHz": # Mapping
+            bandwidth_limit = "20M"
 
         self._scpi_set_channel_bwlimit(
             channel=channel,
@@ -605,12 +610,11 @@ class Siglent_SDS2000:
                 state="OFF"
             )
 
-        for i in range(1, 5+1):
+        self._scpi_measure_statistics_on_off(
+            state="OFF"
+        )
 
-            self._scpi_measure_statistics_on_off(
-                position=i,
-                state="OFF"
-            )
+        for i in range(1, 5+1):
 
             self._scpi_measure_on_off(
                 position=i,
@@ -663,10 +667,22 @@ class Siglent_SDS2000:
             )
 
     def save_screenshot(
-        self, 
-        filename:str = "TEMP", 
-        suffix:str = ""
-    ) -> None:
+        self,
+        filename: str = "TEMP",
+    ) -> str:
+        """
+        Save screenshot and return path.
+
+        Args:
+            <filename>  Filename of the screenshot
+
+            <suffix1>   Additional suffix to unify with other screenshots or so
+
+            <suffix2>   Additional suffix to unify with other screenshots or so
+
+        Returns:
+            String to saved file
+        """
         
         cmd = "PRIN? BMP"
         logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
@@ -675,12 +691,7 @@ class Siglent_SDS2000:
     
         os.makedirs("measurements", exist_ok=True)
 
-        if filename:
-            full_name = f"{filename}_SCOPE_{suffix}.bmp"
-        else:
-            full_name = f"SCOPE_{suffix}.bmp"
-
-        path = os.path.join("measurements", full_name)
+        path = os.path.join("measurements", f"{filename}.bmp")
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
@@ -689,6 +700,8 @@ class Siglent_SDS2000:
 
         with open(path, "wb") as f:
             f.write(data)
+
+        return path
 
     def run(
         self
@@ -713,10 +726,35 @@ class Siglent_SDS2000:
         position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
 
-        logger.debug(f"Get count from statistics at position {position}")
+        #logger.debug(f"Get count from statistics at position {position}")
 
         return float(self.query(f":MEASure:ADVanced:P{position}:STATistics? COUNt"))
     
     def persistence_clear(self) -> None:
         
         self._scpi_display_clear()
+
+    def set_label(
+        self,
+        channel: Literal[1, 2, 3, 4],
+        label: str
+    ) -> None:
+        """
+        Sets label for channel
+        """
+
+        if label == None:
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="OFF"
+            )
+        else:
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="ON"
+            )
+
+            self._scpi_set_channel_label_text(
+                channel=channel,
+                text=label
+            )

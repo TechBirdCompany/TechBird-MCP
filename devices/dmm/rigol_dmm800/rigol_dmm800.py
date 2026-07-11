@@ -670,19 +670,20 @@ class RIGOL_DMM800:
         
         logger.info("Rigol DMM display control is not exposed via this adapter")
 
-    def get_screenshot(
+    def save_screenshot(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
-    ):
+        filename: str = "TEMP"
+    ) -> None:
         """
-        Compatibility wrapper for the OWON screenshot API.
+        Retrieves a screenshot.
+
+        Args:
+            <filename>     Label for the measured signal
         """
-        filename = prefix or label or "DMM"
+
         return self.hcopy_sdump_data_dump(
             filename=filename,
-            folder=folder,
+            folder="measurment",
             format="PNG",
         )
 
@@ -690,23 +691,30 @@ class RIGOL_DMM800:
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ):
+    ) -> None:
         """
-        Compatibility wrapper for OWON API.
-        """
+        Creates a plot from stored measurements.
 
-        timestamp = (
-            suffix
-            if suffix
-            else datetime.datetime.now().strftime(
-                "%Y%m%d_%H%M%S"
-            )
-        )
+        Args:
+            <title>             Title of the plot
+
+            <y_label>           y label...
+
+            <filename>          suffix for the filename
+
+            <nominal_value>     Nominal value, will be displayed as center line
+
+            <min_limit>         Minimal limit
+
+            <max_limit>         Maximal limit
+
+            <limit>             Limit to use for the fetch_storage function
+        """
 
         try:
             values = self.fetch_storage(samples=limit)
@@ -726,7 +734,7 @@ class RIGOL_DMM800:
             y_data=values,
             title=title,
             y_label=y_label,
-            suffix=timestamp,
+            filename=filename,
             unit=self.mode,
             nominal_value=nominal_value,
             min_limit=min_limit,

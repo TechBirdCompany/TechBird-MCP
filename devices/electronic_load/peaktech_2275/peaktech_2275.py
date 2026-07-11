@@ -1,15 +1,13 @@
 """PeakTech 2275 Electronic Load Controller"""
 
-
-
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Literal
 from utils.utils import to_float
 from loguru import logger
 import serial
 from serial.tools import list_ports
 import time
 
-class PeakTech_2275:
+class PEAKTECH_2275:
     """PeakTech 2275 Electronic Load.
     
     Serial-based electronic load controller. py-visa is not compatible
@@ -51,7 +49,7 @@ class PeakTech_2275:
         cls,
         baudrate: int = 38400,
         timeout: float = 10.0,
-    ) -> "PeakTech_2275":
+    ) -> "PEAKTECH_2275":
         """
         Automatically detect and connect to the first
         available PeakTech electronic load.
@@ -130,8 +128,6 @@ class PeakTech_2275:
             "No PeakTech electronic load found after 3 attempts"
         )
 
-
-
     # =========================================
     # Core Commands
     # =========================================
@@ -185,116 +181,105 @@ class PeakTech_2275:
         except Exception as e:
             logger.error(f"Close failed: {e}")
 
-
-
     # =========================================
-    # Identification
+    # SCPI Commands
     # =========================================
 
-    def identify(self) -> Optional[str]:
-        """Query device identification.
+    def _scpi_identify(self) -> Optional[str]:
+        """
+        Query device identification.
         
         Returns:
             Device ID string or None if failed
         """
+        
         logger.info("Identifying device")
+        
         return self.query("*IDN?")
 
-
-
-    # =========================================
-    # Load Control
-    # =========================================
-
-    def load_on(self) -> None:
-        """Enable electronic load."""
+    def _scpi_load_on(self) -> None:
+        """
+        Enable electronic load.
+        """
+        
         logger.info("Enabling load")
+        
         self.write("LOAD ON")
 
-    def load_off(self) -> None:
-        """Disable electronic load."""
+    def _scpi_load_off(self) -> None:
+        """
+        Disable electronic load.
+        """
+        
         logger.info("Disabling load")
+        
         self.write("LOAD OFF")
 
-    def get_load_state(self) -> Optional[str]:
-        """Query current load state.
+    def _scpi_get_load_state(self) -> Optional[str]:
+        """
+        Query current load state.
         
         Returns:
             Load state string or None if failed
         """
+        
         logger.info("Querying load state")
+        
         state = self.query("LOAD:STATE?")
+        
         if state is None:
             state = self.query("LOAD?")
+        
         return state
 
-
-
-    # =========================================
-    # Configuration
-    # =========================================
-
-    def set_mode(self, mode: str = "CC", channel: Optional[int] = None) -> None:
-        """Set load operating mode.
+    def _scpi_set_mode(
+        self, 
+        mode: Literal["CC", "CV", "CP", "CR", "SH", "BAT", "TRAN"] = "CC", 
+    ) -> None:
+        """
+        Set load operating mode.
         
         Args:
-            mode: Operating mode. Options include:
-                - "CC": Constant Current (default)
-                - "CV": Constant Voltage
-                
-            channel: Channel number (ignored - PeakTech is single-channel,
-                    provided for ET54 compatibility)
-        
-        See device manual for all available modes.
+            <mode>  Operating mode. Options include:
+                    "CC":       Constant Current (default)
+                    "CV":       Constant Voltage
+                    "CP":       Constant Power
+                    "CR":       Constant Resistance
+                    "SH":       Circuit Short
+                    "BAT":      Battery Test
+                    "TRAN":     Dynamic Test
         """
 
         logger.info(f"Setting mode to {mode}")
+        
         self.write(f"LOAD:MODE {mode}")
 
-
-
-    def set_current(self, current: 
-                    float, channel: 
-                    Optional[int] = None) -> None:
-        """Set target current for constant current mode.
+    def _scpi_set_current(
+        self, 
+        current: 
+        Optional[float] = None
+    ) -> None:
+        """
+        Set target current for constant current mode.
         
         Args:
-            current: Current value in amperes
-            
-            channel: Channel number (ignored - PeakTech is single-channel,
-                    provided for ET54 compatibility)
+            <current>   Current value in amperes
         """
 
         logger.info(f"Setting current to {current}A")
 
         self.write(f"LOAD:CURR {current}")
 
-        logger.info(
-            f"Current set result: "
-            f"{self.query('LOAD:CURR?')}"
-        )
-
-
-
-    # =========================================
-    # Measurement
-    # =========================================
-
-    def fetch(self, channel: Optional[int] = None) -> Optional[Tuple[float, float]]:
-        """Fetch current measurement values from device.
+    def _scpi_fetch(self) -> Optional[Tuple[float, float]]:
+        """
+        Fetch current measurement values from device.
         
         Retrieves voltage and current measurements in the current mode
         (CC, CV, CR, CP, etc).
-        
-        Args:
-            channel: Channel number (ignored - PeakTech is single-channel,
-                    provided for ET54 compatibility)
-        
+               
         Returns:
             Tuple of (voltage, current) as floats, or None if error occurred
             
-        Raises:
-            ValueError: If response cannot be parsed as floats
         """
         response = self.query("FETCH?")
         
@@ -310,7 +295,6 @@ class PeakTech_2275:
                 logger.error(f"Invalid FETCH response format: {response}")
                 return None
             
-            # Strip units (V, A) from values like "4.959V" and "0.498A"
             voltage_str = values[0].strip().rstrip('V')
             current_str = values[1].strip().rstrip('A')
             
@@ -323,3 +307,106 @@ class PeakTech_2275:
         except ValueError as e:
             logger.error(f"Failed to parse FETCH response '{response}': {e}")
             return None
+        
+    # =========================================
+    # SCPI Commands
+    # =========================================
+
+    def identify(
+        self
+    ) -> str:
+        """
+        Query device identification.
+        
+        Returns:
+            Result of *IDN?
+        """
+
+        return self._scpi_identify()
+    
+    def load_on(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Enable electronic load.
+        """
+
+        self._scpi_load_on()
+
+    def load_off(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Disable electronic load.
+        """
+
+        self._scpi_load_off()
+
+    def set_mode(
+        self,
+        mode: Literal["CC"],
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Configure operating mode.
+
+        Args:
+            <mode>      Mode of channel for eload
+                        [CC]
+
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+        """
+
+        self._scpi_set_mode(
+            mode=mode
+        )
+    
+    def set_current(
+        self,
+        current: float,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Configure load current.
+
+        Args:
+            <current>    Set current for channel... as currently on CC is defined
+                        This definition need to be changed, when other modes should
+                        be supported
+                        [CC]
+
+            <channel>    Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+        """
+
+        self._scpi_set_current(
+            current=current
+        )
+
+    def fetch(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> tuple[float, float]:
+        """
+        Read measurement values.
+
+        Args:
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+
+        Returns:
+            Returns volage and current, which are mostly the returned values in SCPI command guides
+            [voltage, current]
+        """
+
+        return self._scpi_fetch()
+    
+    def close(self) -> None:
+        """
+        Close connection.
+        """
+
+        self.close

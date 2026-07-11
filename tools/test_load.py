@@ -1,12 +1,13 @@
 import time
 from loguru import logger
 from utils.utils import *
+import sys
 
 from devices.dmm.dmm_protocol import dmm
 from devices.scope.scope_protocol import scope
 from devices.electronic_load.eload_protocol import eload
 
-def load_test(
+def test_load(
     scope: scope,
     dmm: dmm,
     eload: eload,
@@ -15,12 +16,35 @@ def load_test(
     min_voltage: float,
     domain: str,
     current: float,
+    samples: int = 200,
     single: bool = False
 ):
     """
     Measures the domain in idle and with mid and high load
-    """
 
+    Args:
+        <scope>             Scope
+
+        <dmm>               DMM
+
+        <eload>             E Load
+
+        <voltage>           Voltage value which is expected
+
+        <max_voltage>       Max voltage of <voltage>
+
+        <min_voltage>       Min voltage of <voltage>
+
+        <domain>            Domain name of <voltage>
+
+        <current>           Maximum current which should be available
+                            If <single> is true, it will measure only this current
+
+        <samples>           Number of samples which should be captured
+
+        <single>            Single measurment or with idle, half and full current
+    """
+    
     logger.info(
         f"Starting load test: "
         f"{voltage}V @ {current}A"
@@ -38,7 +62,6 @@ def load_test(
         ]
 
     for test_current_label, test_current in test_points:
-
 
         current_label = f"{test_current:.2f}A"
 
@@ -59,7 +82,7 @@ def load_test(
         dmm.setup(  # Setup DMM
             mode="V",
             range=max_voltage,
-            speed="HIGH",
+            speed="FAST",
         )
 
         scope.stop()    # Stop scope
@@ -74,7 +97,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 1 of scope
             channel=1,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="V",
             label=f"{domain} @ {test_current}A",
@@ -86,7 +109,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="A",
             label=f"{domain} @ {test_current}A",
@@ -136,31 +159,38 @@ def load_test(
 
         scope.run() # Set scope in run mode
 
-        while True:
-            count = scope.get_count(
-                position=1
-            )
+        last_count = None
 
-            logger.info(f"Scope Counter at: {count}")
+        while True:
+            count = scope.get_count(position=1)
+
+            if count != last_count:
+                sys.stdout.write(
+                    f"\rMeasurement count: {count}/{samples}"
+                )
+                sys.stdout.flush()
+                last_count = count
 
             if count >= 250:
+                print()  # Zeilenumbruch
                 break
+
+            time.sleep(0.1)
 
         scope.stop() # Set scope in stop mode
 
         scope.save_screenshot(  # Get screenshot of scope
             filename=f"{domain}_DC",
-            suffix=f"{voltage}_{test_current_label}",
         )
 
         dmm.get_plot(   # Get Plot of voltage during load //BSC: needs to be paralized with time
             title=f"{domain} DC Output @ {test_current}A",
             y_label=domain,
-            suffix=f"{domain} @ {current_label}",
+            filename=f"{domain} @ {current_label}",
             nominal_value=voltage,
             min_limit=min_voltage,
             max_limit=max_voltage,
-            limit=250,
+            limit=samples,
         )
 
         # ---------------------------
@@ -171,7 +201,7 @@ def load_test(
 
         scope.set_channel(  # Prepare channel 1 to ripple measurment
             channel=1,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="V",
             label=f"{domain} @ {test_current}A",
@@ -183,7 +213,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="A",
             label=f"{domain} @ {test_current}A",
@@ -231,19 +261,26 @@ def load_test(
 
         scope.run() # Set Scope to run mode
 
-        while True:
-            count = scope.get_count(
-                position=1
-            )
+        last_count = None
 
-            logger.info(f"Scope Counter at: {count}")
+        while True:
+            count = scope.get_count(position=1)
+
+            if count != last_count:
+                sys.stdout.write(
+                    f"\rMeasurement count: {count}/{samples}"
+                )
+                sys.stdout.flush()
+                last_count = count
 
             if count >= 250:
+                print()  # Zeilenumbruch
                 break
+
+            time.sleep(0.1)
 
         scope.save_screenshot(  # Create screenshot
             filename=f"{domain}_RIPPLE",
-            suffix=f"{voltage}V_{test_current}A",
         )
 
         eload.load_off() # Disable eload

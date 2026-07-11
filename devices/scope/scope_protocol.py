@@ -117,7 +117,7 @@ class scope(Protocol):
         Configure display persistence.
 
         Args:
-            duration:   Sets the duration of the presistance mode
+            <duration>  Sets the duration of the presistance mode
                         0 should turn off persistance mode
                         -1 for infinity
         """
@@ -142,12 +142,12 @@ class scope(Protocol):
         Configure measurement slot.
 
         Args:
-            position:           Position of the measurment
+            <position>          Position of the measurment
                                 If position is to high the function should create a warning
 
-            channel:            Channel on which the measurment is performed
+            <channel>           Channel on which the measurment is performed
 
-            measurment_type:    Type of the measurment
+            <measurment_type>   Type of the measurment
                                 [PKPK|RMS|MAX|MIN]
         """
         ...
@@ -155,15 +155,19 @@ class scope(Protocol):
     def save_screenshot(
         self,
         filename: str = "TEMP",
-        suffix: str = ""
-    ) -> None:
+    ) -> str:
         """
         Save screenshot and return path.
 
         Args:
-            filename:   Filename of the screenshot
+            <filename>  Filename of the screenshot
 
-            suffix:     Additional suffix to unify with other screesnhots or so
+            <suffix1>   Additional suffix to unify with other screenshots or so
+
+            <suffix2>   Additional suffix to unify with other screenshots or so
+
+        Returns:
+            String to saved file
         """
         ...
 
@@ -199,13 +203,25 @@ class scope(Protocol):
         Returns the count of said position
 
         Args:
-            position:   Position where the count should be taken off
+            <position>  Position where the count should be taken off
 
         Returns:
             Integer of captured waveforms
         """
+        ...
 
     def persistence_clear(self) -> None:
         """
         Clears the persistence traces from the display.
         """
+        ...
+
+    def set_label(
+        self,
+        channel: Literal[1, 2, 3, 4],
+        label: str
+    ) -> None:
+        """
+        Sets label for channel
+        """
+        ...

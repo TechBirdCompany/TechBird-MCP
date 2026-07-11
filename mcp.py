@@ -1,30 +1,32 @@
-#from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
-#from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
+from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
+from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
 from devices.scope.rigol_mso1000.rigol_mso1000 import RIGOL_MSO1000
 
-#from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
-#from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
+from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
+from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
 
-#from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
-#from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
+from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
+from devices.electronic_load.peaktech_2275.peaktech_2275 import PEAKTECH_2275
 
-#from testcases.loadtest import load_test
+from tools.test_load import test_load
+from tools.get_visual import *
 import time
 from loguru import logger
 
 def main():
 
-    #scope = Siglent_SDS2000("TCPIP0::10.10.10.90::INSTR")
+    scope = Siglent_SDS2000("TCPIP0::10.10.10.90::INSTR")
     #scope = RUS_HMO3000("TCPIP0::192.168.1.59::INSTR")
+    #scope = RIGOL_MSO1000("TCPIP0::192.168.1.63::5555::SOCKET")
 
-    #dmm = OWON_XDM1000()
+    dmm = OWON_XDM1000()
     #dmm = RIGOL_DMM800("TCPIP0::192.168.1.38::INSTR")
 
     #eload = EASTTESTER_ET54.auto_connect()
-    #eload = PeakTech_2275.auto_connect()
+    #eload = PEAKTECH_2275.auto_connect()
 
     """
-    load_test(
+    test_load(
         scope=scope,
         dmm=dmm,
         eload=eload,
@@ -33,33 +35,32 @@ def main():
         min_voltage=4.95,
         domain="VCC5V0",
         current=0.5,
+        samples=20,
         single=True
     )
     """
 
-def fetch_rigol_screenshot(resource: str, filename: str = "rigol", suffix: str = "screenshot"):
-    """Create a screenshot from the Rigol scope and return the saved path."""
-    scope = None
-    try:
-        scope = RIGOL_MSO1000(resource)
-        path = scope.save_screenshot(filename=filename, suffix=suffix)
-        logger.info(f"Saved Rigol screenshot to {path}")
-        return path
-    except Exception as exc:
-        logger.warning(f"Could not capture Rigol screenshot: {exc}")
-        return ""
-    finally:
-        if scope is not None:
-            scope.close()
+    """
+    get_screenshot_scope(
+        device=scope,
+        filename="Test",
+        label_ch1="e1",
+        label_ch2="2e",
+        label_ch3="3r",
+        label_ch4="4r"
+    )
+    """
+
+    get_plot_dmm(
+        device=dmm,
+        filename="DMM",
+        samples=20,
+        title="Moep",
+        y_label="V",
+        nominal_value=5,
+        min_limit=4.95,
+        max_limit=5.05
+    )
 
 if __name__ == "__main__":
-    
-    fetch_rigol_screenshot(
-        resource="TCPIP0::192.168.1.63::5555::SOCKET",
-        filename="rigol_scope",
-        suffix="capture"
-    )
-    
-    resource="TCPIP0::192.168.1.63::5555::SOCKET"
-    scope = RIGOL_MSO1000(resource)
-    scope.add_scope_labels("C:\\GIT\\TechBird-MCP\\measurements\\rigol_scope_SCOPE_capture.png", "VCC_3V3 @ 2A", "X_MCASP1_A0", "VCC_3V3 @ 100A", "VCC_1kV @ 2A")
+    main()

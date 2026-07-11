@@ -32,19 +32,6 @@ class eload(Protocol):
         """
         ...
 
-    def get_load_state(
-        self,
-        channel: Optional[Literal[1, 2]] = 1
-    ) -> bool:
-        """
-        Query load state.
-
-        Returns:
-            State of load 
-            [TRUE = ON | FALSE = OFF]
-        """
-        ...
-
     def set_mode(
         self,
         mode: Literal["CC"],

@@ -1,4 +1,8 @@
 import inspect
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from devices.scope.scope_protocol import scope
 from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
@@ -11,22 +15,28 @@ from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
 
 from devices.electronic_load.eload_protocol import eload
 from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
-from devices.electronic_load.peaktech_2275.peaktech_2275 import PeakTech_2275
+from devices.electronic_load.peaktech_2275.peaktech_2275 import PEAKTECH_2275
 
 
 DEVICES = [
-    #(scope, RUS_HMO3000),
-    #(scope, Siglent_SDS2000),
-    #(scope, RIGOL_MSO1000),
+    (scope, RUS_HMO3000),
+    (scope, Siglent_SDS2000),
+    (scope, RIGOL_MSO1000),
 
-    #(dmm, OWON_XDM1000),
-    #(dmm, RIGOL_DMM800),
+    (dmm, OWON_XDM1000),
+    (dmm, RIGOL_DMM800),
 
     (eload, EASTTESTER_ET54),
-    #(eload, PeakTech_2275),
+    (eload, PEAKTECH_2275),
 ]
 
-def verify_protocol(protocol_cls, implementation_cls):
+def verify_protocol(
+    protocol_cls, 
+    implementation_cls
+) -> None:
+    """
+    Tests if the device classes provides every API function
+    """
 
     protocol_methods = {
         name: obj
@@ -75,11 +85,35 @@ def verify_protocol(protocol_cls, implementation_cls):
         f"{len(mismatches)} Mismatches"
     )
 
-    return len(missing) == 0 and len(mismatches) == 0
+    return {
+        "ok": len(ok),
+        "missing": len(missing),
+        "mismatches": len(mismatches),
+    }
 
 if __name__ == "__main__":
+    summary = []
+
     for protocol_cls, implementation_cls in DEVICES:
         print(f"Checking {implementation_cls.__name__}...")
-        verify_protocol(protocol_cls, implementation_cls)
 
-    print("All protocol checks done")
+        result = verify_protocol(protocol_cls, implementation_cls)
+
+        summary.append({
+            "device": implementation_cls.__name__,
+            **result
+        })
+
+    print("\n========== DEVICE OVERVIEW ==========")
+
+    for entry in summary:
+        issues = entry["missing"] + entry["mismatches"]
+
+        print(
+            f"{entry['device']:<25} "
+            f"Error: {issues:<3} "
+            f"(Missing={entry['missing']}, "
+            f"Mismatch={entry['mismatches']})"
+        )
+
+    print("\nAll protocol checks done")

@@ -109,7 +109,7 @@ class EASTTESTER_ET54:
                     inst = rm.open_resource(resource_id)
                     inst.timeout = kwargs.get("timeout", 500)
 
-                    response = inst.query("*IDN?")
+                    response = inst.query("*IDN?").strip()
                     inst.close()
 
                     if isinstance(response, str):
@@ -382,23 +382,6 @@ class EASTTESTER_ET54:
 
         return (float(voltage),float(current))
     
-    def _scpi_get_load_state(
-        self,
-        channel: Optional[Literal[1, 2]] = 1
-    ) -> bool:
-        """
-        Query load state.
-
-        Args:
-            <channel>   1|2
-
-        Returns:
-            State of load 
-            [TRUE = ON | FALSE = OFF]
-        """
-
-        logger.warning(f"Function not available")
-
     # =========================================
     # API Commands
     # =========================================
@@ -439,23 +422,9 @@ class EASTTESTER_ET54:
             channel=channel
         )
 
-    def get_load_state(
-        self,
-        channel: Optional[Literal[1, 2]] = 1
-    ) -> bool:
-        """
-        Query load state.
-
-        Returns:
-            State of load 
-            [TRUE = ON | FALSE = OFF]
-        """
-
-        logger.warning(f"Function not supported")
-
     def set_mode(
         self,
-        mode: str = "CC",
+        mode: Literal["CC"],
         channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
