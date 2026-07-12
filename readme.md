@@ -28,3 +28,4 @@ This programm will provide hardware specific commands mapped to univified API co
 # To-Do
 - Device constructor should not try to connect. There should be a api command that does this. Otherwise it tries to connect, even tho the device is not connected
 - Make GUI great again
+- Resizing of previous need some fixes
