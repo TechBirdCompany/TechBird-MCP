@@ -4,30 +4,19 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from devices.scope.scope_protocol import scope
-from devices.scope.rus_hmo3000.rus_hmo3000 import RUS_HMO3000
-from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import Siglent_SDS2000
-from devices.scope.rigol_mso1000.rigol_mso1000 import RIGOL_MSO1000
 
-from devices.dmm.dmm_protocol import dmm
-from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
-from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
-
-from devices.electronic_load.eload_protocol import eload
-from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
-from devices.electronic_load.peaktech_2275.peaktech_2275 import PEAKTECH_2275
-
+from gui.device_registry import (
+    DEVICE_INFO
+)
 
 DEVICES = [
-    (scope, RUS_HMO3000),
-    (scope, Siglent_SDS2000),
-    (scope, RIGOL_MSO1000),
 
-    (dmm, OWON_XDM1000),
-    (dmm, RIGOL_DMM800),
+    (
+        info["protocol"],
+        info["class"]
+    )
 
-    (eload, EASTTESTER_ET54),
-    (eload, PEAKTECH_2275),
+    for info in DEVICE_INFO.values()
 ]
 
 def verify_protocol(
@@ -91,13 +80,18 @@ def verify_protocol(
         "mismatches": len(mismatches),
     }
 
-if __name__ == "__main__":
+def run_api_test():
+
     summary = []
 
     for protocol_cls, implementation_cls in DEVICES:
+
         print(f"Checking {implementation_cls.__name__}...")
 
-        result = verify_protocol(protocol_cls, implementation_cls)
+        result = verify_protocol(
+            protocol_cls,
+            implementation_cls
+        )
 
         summary.append({
             "device": implementation_cls.__name__,
@@ -107,7 +101,11 @@ if __name__ == "__main__":
     print("\n========== DEVICE OVERVIEW ==========")
 
     for entry in summary:
-        issues = entry["missing"] + entry["mismatches"]
+
+        issues = (
+            entry["missing"]
+            + entry["mismatches"]
+        )
 
         print(
             f"{entry['device']:<25} "
@@ -117,3 +115,7 @@ if __name__ == "__main__":
         )
 
     print("\nAll protocol checks done")
+
+
+if __name__ == "__main__":
+    run_api_test()

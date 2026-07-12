@@ -3,6 +3,7 @@ import os
 import time
 from loguru import logger
 from typing import Literal
+from pathlib import Path
 
 class RUS_HMO3000:
     def __init__(self, resource):
@@ -732,10 +733,9 @@ class RUS_HMO3000:
                 f"Received {len(result)} bytes from oscilloscope"
             )
 
-            file_path = os.path.join(
-                "measurements",
-                f"{filename}.bmp"
-            )
+            file_path = Path(
+                "measurements"
+            ) / f"{filename}.bmp"
 
             with open(file_path, "wb") as fp:
                 fp.write(result)
@@ -749,7 +749,7 @@ class RUS_HMO3000:
                 f"Failed to save screenshot: {ex}"
             )
 
-            return file_path
+            return str(file_path.resolve())
 
     def persistence_clear(self) -> None:
         self.persistence_clear()
@@ -784,7 +784,7 @@ class RUS_HMO3000:
         Sets label for channel
         """
 
-        if label == "None":
+        if label == "None" or label == "":
             self._scpi_channel_label_state(
                 channel=channel,
                 state="OFF"

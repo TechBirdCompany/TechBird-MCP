@@ -2,9 +2,10 @@ import pyvisa
 import os
 import time
 from loguru import logger
-from typing import Literal
+import typing
+from pathlib import Path
 
-class Siglent_SDS2000:
+class SIGLENT_SDS2000:
     def __init__(self, resource):
         """
         resource examples:
@@ -161,7 +162,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_resolution(
         self, 
-        bit: Literal["8Bits", "10Bits"]
+        bit: typing.Literal["8Bits", "10Bits"]
     ) -> None:
         """
         Set the acquisition resolution to AUTO or OFF
@@ -177,8 +178,8 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_bwlimit(
         self, 
-        channel: Literal[1, 2, 3, 4], 
-        bw: Literal["FULL", "20M"]
+        channel: typing.Literal[1, 2, 3, 4], 
+        bw: typing.Literal["FULL", "20M"]
     ) -> None:
         """
         Set the bandwidth limit for a specific channel.
@@ -194,7 +195,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_vertical_scale(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
         volts_per_div: float = 10
     ) -> None:
         '''
@@ -211,7 +212,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_offset(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
         offset: float = 0
     ) -> None:
         """
@@ -228,8 +229,8 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_enable(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
-        state: Literal["ON", "OFF"] = "OFF"
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
     ) -> None:
         """
         Enables channel
@@ -245,8 +246,8 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_coupling(
         self,
-        channel: Literal[1, 2, 3, 4] = 1, 
-        coupling: Literal["AC", "DC"] = "DC"
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        coupling: typing.Literal["AC", "DC"] = "DC"
     ) -> None:
         """
         Set the coupling mode for a specific channel.
@@ -262,8 +263,8 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_label_on_off(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
-        state: Literal["ON", "OFF"] = "OFF"
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
     ) -> None:
         """
         Enables the label of given channel
@@ -279,7 +280,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_label_text(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
         text = ""
     ) -> None:
         """
@@ -303,8 +304,8 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_unit(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
-        unit: Literal["V", "A"] = "V"):
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        unit: typing.Literal["V", "A"] = "V"):
         """
         Set the unit for a specific channel.
         
@@ -319,7 +320,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_channel_attenuation(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
         attenuation: float = 10
     ) -> None:
         """
@@ -368,7 +369,7 @@ class Siglent_SDS2000:
 
     def _scpi_set_trigger_edge_source(
         self, 
-        channel: Literal[1, 2, 3, 4] = 1
+        channel: typing.Literal[1, 2, 3, 4] = 1
     ) -> None:
         """
         Sets the trigger source
@@ -383,7 +384,7 @@ class Siglent_SDS2000:
 
     def _scpi_measure_statistics_on_off(
         self, 
-        state: Literal["ON", "OFF"] = "OFF"
+        state: typing.Literal["ON", "OFF"] = "OFF"
     ) -> None:
         """
         Enable or disable measurement statistics on the oscilloscope.
@@ -406,8 +407,8 @@ class Siglent_SDS2000:
         self.write(":MEASure:ADVanced:STATistics:RESet")
 
     def _scpi_measure_item(self, 
-        position: Literal[1, 2, 3, 4, 5] = 1, 
-        parameter: Literal["MIN", "MAX", "PKPK", "RMS"] = "RMS"
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        parameter: typing.Literal["MIN", "MAX", "PKPK", "RMS"] = "RMS"
     ) -> None:
         """
         Measure a specific item on the oscilloscope.
@@ -434,8 +435,8 @@ class Siglent_SDS2000:
 
     def _scpi_measure_source1(
         self, 
-        position: Literal[1, 2, 3, 4, 5] = 1, 
-        channel: Literal[1, 2, 3, 4] = 1
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1
     ) -> None:
         """
         Set the source for the set position
@@ -452,8 +453,8 @@ class Siglent_SDS2000:
 
     def _scpi_measure_on_off(
         self, 
-        position: Literal[1, 2, 3, 4, 5] = 1, 
-        state: Literal["ON", "OFF"] = "OFF"
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
     ) -> None:
         """
         Enable measurment on position
@@ -480,7 +481,7 @@ class Siglent_SDS2000:
     
     def set_resolution(
         self,
-        bit: Literal[8, 16] = 16
+        bit: typing.Literal[8, 16] = 16
     ) -> None:
         
         if bit == 10: # Mapping    
@@ -494,13 +495,13 @@ class Siglent_SDS2000:
 
     def set_channel(
         self,
-        channel: Literal[1, 2, 3, 4] = 1,
-        enable: Literal["ON", "OFF"] = "ON",
+        channel: typing.Literal[1, 2, 3, 4] = 1,
+        enable: typing.Literal["ON", "OFF"] = "ON",
         attenuation: float = 10,
-        unit: Literal["V", "A"] = "V",
+        unit: typing.Literal["V", "A"] = "V",
         label: str = "",
-        coupling: Literal["AC", "DC"] = "DC",
-        bandwidth_limit: Literal["FULL", "20MHz"] = "FULL",
+        coupling: typing.Literal["AC", "DC"] = "DC",
+        bandwidth_limit: typing.Literal["FULL", "20MHz"] = "FULL",
         volts_per_div: float = 5,
         position: float = 0
     ) -> None:
@@ -629,9 +630,9 @@ class Siglent_SDS2000:
 
     def set_measurement(
         self,
-        position: Literal[1, 2, 3, 4, 5, 6] = 1,
-        channel: Literal[1, 2, 3, 4] = 1,
-        measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
+        position: typing.Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: typing.Literal[1, 2, 3, 4] = 1,
+        measurement_type: typing.Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
     ) -> None:
                 
         if measurement_type == "OFF":
@@ -691,7 +692,10 @@ class Siglent_SDS2000:
     
         os.makedirs("measurements", exist_ok=True)
 
-        path = os.path.join("measurements", f"{filename}.bmp")
+
+        path = Path(
+            "measurements"
+        ) / f"{filename}.bmp"
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
@@ -701,7 +705,7 @@ class Siglent_SDS2000:
         with open(path, "wb") as f:
             f.write(data)
 
-        return path
+        return str(path.resolve())
 
     def run(
         self
@@ -723,7 +727,7 @@ class Siglent_SDS2000:
 
     def get_count(
         self,
-        position: Literal[1, 2, 3, 4, 5, 6] = 1
+        position: typing.Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
 
         #logger.debug(f"Get count from statistics at position {position}")
@@ -736,14 +740,14 @@ class Siglent_SDS2000:
 
     def set_label(
         self,
-        channel: Literal[1, 2, 3, 4],
+        channel: typing.Literal[1, 2, 3, 4],
         label: str
     ) -> None:
         """
         Sets label for channel
         """
 
-        if label == None:
+        if label == None or label == "":
             self._scpi_set_channel_label_on_off(
                 channel=channel,
                 state="OFF"

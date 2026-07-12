@@ -85,7 +85,7 @@ class dmm(Protocol):
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ) -> None:
+    ) -> str:
         """
         Creates a plot from stored measurements.
 
@@ -103,5 +103,8 @@ class dmm(Protocol):
             <max_limit>         Maximal limit
 
             <limit>             Limit to use for the fetch_storage function
+
+        Returns:
+            Path to file
         """
         ...

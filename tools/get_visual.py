@@ -13,7 +13,7 @@ def get_screenshot_scope(
         label_ch2: Optional[str] = None,
         label_ch3: Optional[str] = None,
         label_ch4: Optional[str] = None
-) -> None:
+) -> str:
     """
     Gets screenshot of the given scope
 
@@ -39,14 +39,16 @@ def get_screenshot_scope(
             label = labels[i]
         )
 
-    device.save_screenshot(
+    path = device.save_screenshot(
         filename=f"{filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}"
     )
+
+    return path
 
 def get_screenshot_dmm(
        device:dmm,
        filename: str = "TEMP"
-) -> None:
+) -> str:
     """
     Gets screenshot of dmm, if supported
 
@@ -67,7 +69,7 @@ def get_plot_dmm(
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
-) -> None:
+) -> str:
     """
     Get plot of DMM for the desired samples, if supported
 
@@ -89,7 +91,7 @@ def get_plot_dmm(
         <max_limit>         Maximal limit
     """
 
-    device.get_plot(
+    path = device.get_plot(
         filename=f"{filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}",
         title=title,
         y_label=y_label,
@@ -98,3 +100,5 @@ def get_plot_dmm(
         max_limit=max_limit,
         limit=samples
     )
+
+    return path
