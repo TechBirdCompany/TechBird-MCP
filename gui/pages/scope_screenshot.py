@@ -1,14 +1,8 @@
 from nicegui import ui
 from loguru import logger
 
-from devices.scope.siglent_sds2000xplus.siglent_sds2000xplus import (
-    Siglent_SDS2000
-)
-
-from tools.get_visual import (
-    get_screenshot_scope
-)
-
+from gui.config import load_config, create_device
+from tools.get_visual import get_screenshot_scope
 
 def build_scope_screenshot_page():
 
@@ -18,8 +12,10 @@ def build_scope_screenshot_page():
 
         try:
 
-            scope = Siglent_SDS2000(
-                "TCPIP0::10.10.10.90::INSTR"
+            cfg = load_config()
+
+            scope = create_device(
+                cfg["selected"]["scope"]
             )
 
             image_path = get_screenshot_scope(
@@ -31,84 +27,33 @@ def build_scope_screenshot_page():
                 label_ch4=ch4.value,
             )
 
-            preview.set_source(
-                image_path
-            )
+            preview.set_source(image_path)
 
-            ui.notify(
-                "Screenshot created",
-                type="positive"
-            )
+            ui.notify("Screenshot created", type="positive")
 
         except Exception as e:
 
             logger.exception(e)
 
-            ui.notify(
-                str(e),
-                type="negative"
-            )
+            ui.notify(str(e), type="negative")
 
-    with ui.row().classes(
-        'w-full'
-    ).style(
-        'align-items:flex-start'
-    ):
+    with ui.row().classes('w-full').style('align-items:flex-start'):
 
-        #
-        # Parameter
-        #
-        with ui.card().style(
-            'width:350px;'
-        ):
+        with ui.card().style('width:350px;'):
 
-            ui.label(
-                'Parameters'
-            ).classes(
-                'text-h6'
-            )
+            ui.label('Parameters').classes('text-h6')
 
-            filename = ui.input(
-                'Filename',
-                value='TEST'
-            ).classes(
-                'w-full'
-            )
+            filename = ui.input('Filename',value='TEST').classes('w-full')
 
-            ch1 = ui.input(
-                'CH1 Label'
-            ).classes(
-                'w-full'
-            )
+            ch1 = ui.input('CH1 Label').classes('w-full')
 
-            ch2 = ui.input(
-                'CH2 Label'
-            ).classes(
-                'w-full'
-            )
+            ch2 = ui.input('CH2 Label').classes('w-full')
 
-            ch3 = ui.input(
-                'CH3 Label'
-            ).classes(
-                'w-full'
-            )
+            ch3 = ui.input('CH3 Label').classes('w-full')
 
-            ch4 = ui.input(
-                'CH4 Label'
-            ).classes(
-                'w-full'
-            )
+            ch4 = ui.input('CH4 Label').classes('w-full')
 
-            ui.button(
-                'Create Screenshot',
-                on_click=create_screenshot
-            ).classes(
-                'w-full'
-            )
-
-        #
-        # Preview
-        #
+            ui.button('Create Screenshot', on_click=create_screenshot).classes('w-full')
 
         with ui.card().style(
             '''

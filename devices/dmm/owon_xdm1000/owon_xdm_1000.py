@@ -46,26 +46,34 @@ class OWON_XDM1000:
         self,
         mode: Literal["V", "A"] = "V",
         range: float = 0,
-        speed: Literal["L", "M", "F"] = "F",
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
     ) -> None:
         """
         Configure the device.
 
         Args:
-            <mode>  Sets the mode 
-                    [V|A]
+            <mode>   Sets the mode 
+                     [V|A]
             
-            <range> Range is kind of a stupid name and should be the
-                    expected voltage which should be measured, as steps 
-                    are different with every dmm
-                    [0 = AUTO]
+            <range>  Range is kind of a stupid name and should be the
+                     expected voltage which should be measured, as steps 
+                     are different with every dmm
+                     [0 = AUTO]
 
-            <speed> Apperently most of DMMs do have speeds
-                    [L|M|F]
+            <speed>  Apperently most of DMMs do have speeds
+                     [SLOW|MID|FAST]
         """
 
         mode = mode.upper()
         speed = speed.upper()
+
+        #Speed mapper
+        if speed == "SLOW":
+            speed = "L"
+        if speed == "MID":
+            speed = "M"
+        if speed == "FAST":
+            speed = "F"
 
         # Measurement mode
         if mode == "V":

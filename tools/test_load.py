@@ -2,6 +2,7 @@ import time
 from loguru import logger
 from utils.utils import *
 import sys
+from datetime import datetime
 
 from devices.dmm.dmm_protocol import dmm
 from devices.scope.scope_protocol import scope
@@ -44,7 +45,13 @@ def test_load(
 
         <single>            Single measurment or with idle, half and full current
     """
-    
+
+    created_files = []
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
     logger.info(
         f"Starting load test: "
         f"{voltage}V @ {current}A"
@@ -171,27 +178,31 @@ def test_load(
                 sys.stdout.flush()
                 last_count = count
 
-            if count >= 250:
-                print()  # Zeilenumbruch
+            if count >= samples:
+                print()
                 break
 
             time.sleep(0.1)
 
         scope.stop() # Set scope in stop mode
 
-        scope.save_screenshot(  # Get screenshot of scope
-            filename=f"{domain}_DC",
+        file = scope.save_screenshot(  # Get screenshot of scope
+            filename=f"{domain}@{str(test_current)}A_DC_SCOPE_{timestamp}",
         )
 
-        dmm.get_plot(   # Get Plot of voltage during load //BSC: needs to be paralized with time
+        created_files.append(file)
+
+        file = dmm.get_plot(
             title=f"{domain} DC Output @ {test_current}A",
             y_label=domain,
-            filename=f"{domain} @ {current_label}",
+            filename=f"{domain}@{str(test_current)}A_DC_DMM_{timestamp}",
             nominal_value=voltage,
             min_limit=min_voltage,
             max_limit=max_voltage,
             limit=samples,
         )
+
+        created_files.append(file)
 
         # ---------------------------
         # AC Measurment
@@ -273,19 +284,25 @@ def test_load(
                 sys.stdout.flush()
                 last_count = count
 
-            if count >= 250:
-                print()  # Zeilenumbruch
+            if count >= samples:
+                print()
                 break
 
             time.sleep(0.1)
 
-        scope.save_screenshot(  # Create screenshot
-            filename=f"{domain}_RIPPLE",
+        file = scope.save_screenshot(  # Create screenshot
+            filename=f"{domain}@{str(test_current)}A_AC_SCOPE_{timestamp}",
         )
+
+        created_files.append(file)
 
         eload.load_off() # Disable eload
 
         if single == True:
             break
 
+    eload.close()
+
     logger.info("Load test completed")
+
+    return created_files

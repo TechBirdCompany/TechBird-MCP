@@ -8,27 +8,17 @@ from utils.api_test import run_api_test
 
 def build_api_test_page():
 
-    with ui.card().classes(
-        'w-full'
-    ):
+    with ui.card().classes('w-full'):
 
-        ui.label(
-            'API Test'
-        ).classes(
-            'text-h6'
-        )
+        ui.label('API Test').classes('text-h6')
 
-        result = ui.log().classes(
-            'w-full h-96'
-        )
+        result = ui.log().classes('w-full h-96')
 
         def execute():
 
             buffer = io.StringIO()
 
-            with contextlib.redirect_stdout(
-                buffer
-            ):
+            with contextlib.redirect_stdout(buffer):
                 run_api_test()
 
             result.clear()
@@ -36,7 +26,4 @@ def build_api_test_page():
             for line in buffer.getvalue().splitlines():
                 result.push(line)
 
-        ui.button(
-            'Run Protocol Check',
-            on_click=execute
-        )
+        ui.button('Run Protocol Check', on_click=execute)
