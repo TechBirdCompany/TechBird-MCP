@@ -1,9 +1,6 @@
 from nicegui import ui
 from loguru import logger
 from gui.config import load_config, create_device
-
-from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
-
 from tools.get_visual import get_plot_dmm
 
 def build_get_plot_page():
@@ -14,7 +11,6 @@ def build_get_plot_page():
 
         try:
 
-            
             cfg = load_config()
 
             dmm = create_device(cfg["selected"]["dmm"])
@@ -48,7 +44,7 @@ def build_get_plot_page():
 
             ui.label('DMM Plot').classes('text-h6')
 
-            filename = ui.input('Filename', value='PLOT').classes('w-full')
+            filename = ui.input('Filename', value='DMM').classes('w-full')
 
             title = ui.input('Title').classes('w-full')
 

@@ -7,7 +7,6 @@ async def main():
 
     build_main_page()
 
-
 ui.run(
     title='TechBird MCP',
     reload=False

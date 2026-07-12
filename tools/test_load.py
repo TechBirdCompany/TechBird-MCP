@@ -19,7 +19,7 @@ def test_load(
     current: float,
     samples: int = 200,
     single: bool = False
-):
+) -> str:
     """
     Measures the domain in idle and with mid and high load
 
@@ -171,7 +171,7 @@ def test_load(
         while True:
             count = scope.get_count(position=1)
 
-            if count != last_count:
+            if count != last_count: # Print only when sample increases
                 sys.stdout.write(
                     f"\rMeasurement count: {count}/{samples}"
                 )
@@ -277,7 +277,7 @@ def test_load(
         while True:
             count = scope.get_count(position=1)
 
-            if count != last_count:
+            if count != last_count: # Print only when count increases
                 sys.stdout.write(
                     f"\rMeasurement count: {count}/{samples}"
                 )

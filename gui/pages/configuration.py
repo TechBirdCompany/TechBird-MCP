@@ -1,10 +1,5 @@
 from nicegui import ui
-
-from gui.config import (
-    load_config,
-    save_config,
-)
-
+from gui.config import load_config, save_config
 
 def build_configuration_page():
 
@@ -17,10 +12,18 @@ def build_configuration_page():
     with ui.card().style(
         'width:900px;'
     ):
+        
+        # ---------------------------
+        # Header
+        # ---------------------------
 
         ui.label("Device Configuration").classes("text-h6")
 
         ui.separator()
+
+        # ---------------------------
+        # Scope area
+        # ---------------------------
 
         ui.label("Scope")
 
@@ -43,13 +46,14 @@ def build_configuration_page():
                 ["resource"]
             )
 
-        scope_type.on(
-            "update:model-value",
-            lambda e: update_scope()
-        )
+        scope_type.on("update:model-value", lambda e: update_scope())
 
         ui.separator()
 
+        # ---------------------------
+        # DMM area
+        # ---------------------------
+        
         ui.label("DMM")
 
         dmm_type = ui.select(
@@ -71,12 +75,13 @@ def build_configuration_page():
                 ["resource"]
             )
 
-        dmm_type.on(
-            "update:model-value",
-            lambda e: update_dmm()
-        )
+        dmm_type.on("update:model-value", lambda e: update_dmm())
 
         ui.separator()
+
+        # ---------------------------
+        # E-Load area
+        # ---------------------------
 
         ui.label("Electronic Load")
 
@@ -99,12 +104,13 @@ def build_configuration_page():
                 ["resource"]
             )
 
-        eload_type.on(
-            "update:model-value",
-            lambda e: update_eload()
-        )
+        eload_type.on("update:model-value", lambda e: update_eload())
 
         ui.separator()
+
+        # ---------------------------
+        # Save button
+        # ---------------------------
 
         def save():
 
@@ -128,12 +134,6 @@ def build_configuration_page():
 
             save_config(cfg)
 
-            ui.notify(
-                "Configuration saved",
-                type="positive"
-            )
+            ui.notify("Configuration saved", type="positive")
 
-        ui.button(
-            "Save Configuration",
-            on_click=save
-        )
+        ui.button("Save Configuration", on_click=save)

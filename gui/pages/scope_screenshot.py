@@ -1,6 +1,5 @@
 from nicegui import ui
 from loguru import logger
-
 from gui.config import load_config, create_device
 from tools.get_visual import get_screenshot_scope
 
@@ -14,9 +13,7 @@ def build_scope_screenshot_page():
 
             cfg = load_config()
 
-            scope = create_device(
-                cfg["selected"]["scope"]
-            )
+            scope = create_device(cfg["selected"]["scope"])
 
             image_path = get_screenshot_scope(
                 device=scope,
@@ -43,7 +40,7 @@ def build_scope_screenshot_page():
 
             ui.label('Parameters').classes('text-h6')
 
-            filename = ui.input('Filename',value='TEST').classes('w-full')
+            filename = ui.input('Filename',value='SCOPE').classes('w-full')
 
             ch1 = ui.input('CH1 Label').classes('w-full')
 

@@ -1,22 +1,16 @@
-import asyncio
 import os
 from nicegui import ui, app
-
 from gui.pages.scope_screenshot import build_scope_screenshot_page
-
 from gui.pages.api_test import build_api_test_page
-
 from gui.pages.load_test import build_load_test_page
-
-from gui.widgets.console import build_console
-
 from gui.pages.get_plot import build_get_plot_page
-
 from gui.pages.configuration import build_configuration_page
 
-
-
 def build_main_page():
+
+    # ---------------------------
+    # UI row with name and logo
+    # ---------------------------
 
     with ui.row().classes('w-full justify-between items-center'):
 
@@ -33,7 +27,15 @@ def build_main_page():
 
         logo.on('dblclick',lambda: os._exit(0))
 
+    # ---------------------------
+    # UI row with menus
+    # ---------------------------
+
     with ui.row().classes('w-full'):
+
+        # ---------------------------
+        # Side menu
+        # ---------------------------
 
         with ui.card().style('width:250px; min-height:800px;'):
 
@@ -50,6 +52,10 @@ def build_main_page():
             nav_config = ui.button('Configuration').classes('w-full')
 
         content = ui.column().classes('flex-grow')
+
+        # ---------------------------
+        # Menu definitions
+        # ---------------------------   
 
         def show_scope():
 
@@ -86,6 +92,10 @@ def build_main_page():
             with content:
                 build_configuration_page()
 
+        # ---------------------------
+        # Button Functions
+        # ---------------------------
+
         nav_scope.on('click', show_scope)
 
         nav_load.on('click', show_load)
@@ -96,7 +106,9 @@ def build_main_page():
 
         nav_config.on('click', show_config)
 
+        # ---------------------------
+        # Default  Page
+        # ---------------------------
+
         with content:
             build_scope_screenshot_page()
-
-    #build_console()

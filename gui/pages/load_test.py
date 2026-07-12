@@ -1,14 +1,8 @@
 from nicegui import ui
 from loguru import logger
 import threading
-
-from gui.config import (
-    load_config,
-    create_device,
-)
-
+from gui.config import load_config, create_device
 from tools.test_load import test_load
-
 
 def build_load_test_page():
 
@@ -34,10 +28,7 @@ def build_load_test_page():
 
             for file in files[:9]:
 
-                image_path = file.replace(
-                    "\\",
-                    "/"
-                )
+                image_path = file.replace("\\", "/")
 
                 image = ui.image(
                     image_path
@@ -50,15 +41,9 @@ def build_load_test_page():
                     '''
                 )
 
-                image.tooltip(
-                    image_path.split("/")[-1]
-                )
+                image.tooltip(image_path.split("/")[-1])
 
-                image.on(
-                    'click',
-                    lambda e, p=image_path:
-                        open_preview(p)
-                )
+                image.on('click', lambda e, p=image_path: open_preview(p))
 
     def check_for_results():
 
@@ -73,9 +58,7 @@ def build_load_test_page():
 
         last_result_count = len(test_results)
 
-        show_results(
-            test_results
-        )
+        show_results(test_results)
 
     def run_load_test():
 
@@ -85,65 +68,36 @@ def build_load_test_page():
 
             cfg = load_config()
 
-            scope = create_device(
-                cfg["selected"]["scope"]
-            )
+            scope = create_device(cfg["selected"]["scope"])
 
-            dmm = create_device(
-                cfg["selected"]["dmm"]
-            )
+            dmm = create_device(cfg["selected"]["dmm"])
 
-            eload = create_device(
-                cfg["selected"]["eload"]
-            )
+            eload = create_device(cfg["selected"]["eload"])
 
             test_results = test_load(
                 scope=scope,
                 dmm=dmm,
                 eload=eload,
                 voltage=float(voltage.value),
-                max_voltage=float(
-                    max_voltage.value
-                ),
-                min_voltage=float(
-                    min_voltage.value
-                ),
+                max_voltage=float(max_voltage.value),
+                min_voltage=float(min_voltage.value),
                 domain=domain.value,
-                current=float(
-                    current.value
-                ),
-                samples=int(
-                    samples.value
-                ),
+                current=float(current.value),
+                samples=int(samples.value),
                 single=single.value,
             )
 
-            logger.info(
-                'Load Test completed'
-            )
+            logger.info('Load Test completed')
 
         except Exception as e:
 
             logger.exception(e)
 
-    with ui.row().classes(
-        'w-full'
-    ).style(
-        'align-items:flex-start'
-    ):
+    with ui.row().classes('w-full').style('align-items:flex-start'):
 
-        #
-        # Parameters
-        #
-        with ui.card().style(
-            'width:500px;'
-        ):
+        with ui.card().style('width:500px;'):
 
-            ui.label(
-                'Load Test'
-            ).classes(
-                'text-h6'
-            )
+            ui.label('Load Test').classes('text-h6')
 
             domain = ui.input(
                 'Domain',
@@ -187,9 +141,7 @@ def build_load_test_page():
                 'w-full'
             )
 
-            single = ui.checkbox(
-                'Single Measurement'
-            )
+            single = ui.checkbox('Single Measurement')
 
             ui.button(
                 'Start Load Test',
@@ -201,22 +153,11 @@ def build_load_test_page():
                 'w-full'
             )
 
-        #
-        # Results
-        #
-        with ui.card().style(
-            'flex:1;'
-        ):
+        with ui.card().style('flex:1;'):
 
-            ui.label(
-                'Generated Files'
-            ).classes(
-                'text-h6'
-            )
+            ui.label('Generated Files').classes('text-h6')
 
-            dialog = ui.dialog().props(
-                'maximized'
-            )
+            dialog = ui.dialog().props('maximized')
 
             with dialog:
 
@@ -236,7 +177,4 @@ def build_load_test_page():
                 'justify-items:center;'
             )
 
-    ui.timer(
-        1.0,
-        check_for_results
-    )
+    ui.timer(1.0, check_for_results)
