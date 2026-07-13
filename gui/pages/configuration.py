@@ -110,32 +110,20 @@ def build_configuration_page():
 
             cfg["selected"] = {
 
-                "scope": {
-                    "type": scope_type.value,
-                },
+                "scope": scope_type.value,
 
-                "dmm": {
-                    "type": dmm_type.value,
-                },
+                "dmm": dmm_type.value,
 
-                "eload": {
-                    "type": eload_type.value,
-                }
+                "eload": eload_type.value,
             }
 
             cfg["devices"] = {
 
-                "scope": {
-                    "resource": scope_resource.value,
-                },
+                "scope": {"resource": scope_resource.value},
 
-                "dmm": {
-                    "resource": dmm_resource.value,
-                },
+                "dmm": {"resource": dmm_resource.value},
 
-                "eload": {
-                    "resource": eload_resource.value,
-                }
+                "eload": {"resource": eload_resource.value}
             }
 
             save_config(cfg)
