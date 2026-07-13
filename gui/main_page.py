@@ -37,7 +37,7 @@ def build_main_page():
         # Side menu
         # ---------------------------
 
-        with ui.card().style('width:250px; min-height:800px;'):
+        with ui.card().style('width:250px; min-height:600px;'):
 
             ui.label('Navigation').classes('text-h6')
 

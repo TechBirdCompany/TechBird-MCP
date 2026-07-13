@@ -29,21 +29,19 @@ def build_configuration_page():
 
         scope_type = ui.select(
             list(devices["scope"].keys()),
-            value=selected["scope"]["type"],
-            label="Type",
+            value = selected["scope"],
+            label = "Type",
         ).classes("w-full")
 
         scope_resource = ui.input(
-            label="Resource",
-            value=selected["scope"]["resource"]
+            label = "Resources",
+            value = devices["scope"][selected["scope"]]["resource"]
         ).classes("w-full")
 
         def update_scope():
 
             scope_resource.value = (
-                devices["scope"]
-                [scope_type.value]
-                ["resource"]
+                devices["scope"][scope_type.value]["resource"]
             )
 
         scope_type.on("update:model-value", lambda e: update_scope())
@@ -58,21 +56,19 @@ def build_configuration_page():
 
         dmm_type = ui.select(
             list(devices["dmm"].keys()),
-            value=selected["dmm"]["type"],
+            value=selected["dmm"],
             label="Type",
         ).classes("w-full")
 
         dmm_resource = ui.input(
-            label="Resource",
-            value=selected["dmm"]["resource"]
+            label = "Resource",
+            value = devices["dmm"][selected["dmm"]]["resource"]
         ).classes("w-full")
 
         def update_dmm():
 
             dmm_resource.value = (
-                devices["dmm"]
-                [dmm_type.value]
-                ["resource"]
+                devices["dmm"][dmm_type.value]["resource"]
             )
 
         dmm_type.on("update:model-value", lambda e: update_dmm())
@@ -87,21 +83,19 @@ def build_configuration_page():
 
         eload_type = ui.select(
             list(devices["eload"].keys()),
-            value=selected["eload"]["type"],
-            label="Type",
+            value = selected["eload"],
+            label = "Type",
         ).classes("w-full")
 
         eload_resource = ui.input(
-            label="Resource",
-            value=selected["eload"]["resource"]
+            label = "Resource",
+            value = devices["eload"][selected["eload"]]["resource"]
         ).classes("w-full")
 
         def update_eload():
 
             eload_resource.value = (
-                devices["eload"]
-                [eload_type.value]
-                ["resource"]
+                devices["eload"][eload_type.value]["resource"]
             )
 
         eload_type.on("update:model-value", lambda e: update_eload())
@@ -118,16 +112,28 @@ def build_configuration_page():
 
                 "scope": {
                     "type": scope_type.value,
-                    "resource": scope_resource.value,
                 },
 
                 "dmm": {
                     "type": dmm_type.value,
-                    "resource": dmm_resource.value,
                 },
 
                 "eload": {
                     "type": eload_type.value,
+                }
+            }
+
+            cfg["devices"] = {
+
+                "scope": {
+                    "resource": scope_resource.value,
+                },
+
+                "dmm": {
+                    "resource": dmm_resource.value,
+                },
+
+                "eload": {
                     "resource": eload_resource.value,
                 }
             }

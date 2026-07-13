@@ -30,14 +30,6 @@ devices:
 
 selected:
 
-  scope:
-    type: SIGLENT_SDS2000
-    resource: TCPIP0::10.10.10.90::INSTR
-
-  dmm:
-    type: OWON_XDM1000
-    resource: AUTO
-
-  eload:
-    type: EASTTESTER_ET54
-    resource: AUTO
+  scope: SIGLENT_SDS2000
+  dmm: OWON_XDM1000
+  eload: EASTTESTER_ET54
