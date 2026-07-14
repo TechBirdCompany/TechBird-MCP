@@ -37,3 +37,11 @@ Thumbs.db
 *.csv
 *.xlsx
 *.json
+
+# ---------------------------
+# Configs
+# ---------------------------
+config/get_plot.yaml
+config/load_test.yaml
+config/scope_screenshot.yaml
+config/devices.yaml
