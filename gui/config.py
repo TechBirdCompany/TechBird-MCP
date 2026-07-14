@@ -39,3 +39,32 @@ def create_device(device_cfg):
         return device_class()
 
     return device_class(resource)
+
+def get_selected_device_name(category):
+    config = load_config()
+    return config["selected"][category]
+
+
+def get_selected_device_config(category):
+    config = load_config()
+
+    device_name = config["selected"][category]
+
+    return config["devices"][category][device_name]
+
+
+def get_selected_resource(category):
+    device_cfg = get_selected_device_config(category)
+    return device_cfg.get("resource")
+
+
+def set_selected_device(category, device_name):
+    config = load_config()
+
+    if device_name not in config["devices"]:raise ValueError(
+            f"Unknown device '{device_name}' for category '{category}'"
+        )
+
+    config["selected"][category] = device_name
+
+    save_config(config)
