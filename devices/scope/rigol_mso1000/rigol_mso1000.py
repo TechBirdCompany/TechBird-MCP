@@ -1,29 +1,22 @@
 import os
 import re
 import socket
-import time
 from pathlib import Path
 from typing import Literal
-from PIL import Image, ImageDraw, ImageFont
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase import pdfmetrics
 
 import pyvisa
 from loguru import logger
 
 
 class RIGOL_MSO1000:
-    def __init__(self, resource):
-        """
-        resource examples:
-        USB: 'USB0::0xF4EC::0xEE38::SDS1XXXX::INSTR'
-        LAN: 'TCPIP0::192.168.1.100::INSTR'
-        """
+
+    def __init__(self, resource: str):
+
         self.rm = pyvisa.ResourceManager()
-        
+
         self.inst = None
         self.sock = None
-        
+
         self.labels = {
             "ch1": "",
             "ch2": "",
@@ -31,17 +24,33 @@ class RIGOL_MSO1000:
             "ch4": "",
         }
 
+        if resource.count(".") == 3:
+            resource = f"TCPIP0::{resource}::5555::SOCKET"
+
         self._resource = resource
+
         try:
-            if isinstance(resource, str) and "SOCKET" in resource.upper():
+
+            if "SOCKET" in resource.upper():
+
+                logger.info(f"Connecting via socket: {resource}")
+
                 self.sock = self._open_socket(resource)
+
             else:
+
+                logger.info(f"Connecting via VISA: {resource}")
+
                 self.inst = self.rm.open_resource(resource)
+
                 self.inst.timeout = 30000
                 self.inst.write_termination = "\n"
                 self.inst.read_termination = "\n"
+
         except Exception as exc:
+
             logger.warning(f"Could not connect to Rigol MSO1000: {exc}")
+
             self.inst = None
             self.sock = None
 
@@ -422,6 +431,7 @@ class RIGOL_MSO1000:
     def __add_scope_labels(
         self,
         image_path: str,
+        create_copy: bool = False
     ) -> str:
 
         from pathlib import Path
@@ -429,7 +439,7 @@ class RIGOL_MSO1000:
 
         img = Image.open(image_path).convert("RGB")
         draw = ImageDraw.Draw(img)
-
+        
         try:
             font = ImageFont.truetype(
                 "fonts/Inter-Regular.ttf",
@@ -459,13 +469,20 @@ class RIGOL_MSO1000:
             if not text:
                 continue
 
-            matching_rows = []
+            SEARCH_X1 = 55
+            SEARCH_X2 = 72
 
-            for y in range(30, img.height - 30):
+            SEARCH_Y1 = 50
+            SEARCH_Y2 = img.height - 80
+
+            best_y = None
+            best_count = 0
+
+            for y in range(SEARCH_Y1, SEARCH_Y2):
 
                 count = 0
 
-                for x in range(80, img.width - 120):
+                for x in range(SEARCH_X1, SEARCH_X2):
 
                     r, g, b = pixels[x, y]
 
@@ -476,13 +493,15 @@ class RIGOL_MSO1000:
                     ):
                         count += 1
 
-                if count > 150:
-                    matching_rows.append(y)
+                if count > best_count:
+                    best_count = count
+                    best_y = y
 
-            if not matching_rows:
-                continue
+            print(
+                f"{text}: best_y={best_y}, best_count={best_count}"
+            )
 
-            trace_y = int(sum(matching_rows) / len(matching_rows))
+            trace_y = best_y
 
             labels_to_draw.append(
                 {
@@ -579,11 +598,16 @@ class RIGOL_MSO1000:
 
         image_path = Path(image_path)
 
-        output_path = image_path.with_name(
-            f"{image_path.stem}_labeled{image_path.suffix}"
-        )
+        if create_copy:
+            output_path = image_path.with_name(
+                f"{image_path.stem}_labeled{image_path.suffix}"
+            )
+        else:
+            output_path = image_path
 
         img.save(output_path)
+
+        logger.info(f"Saved labeled screenshot to {output_path}")
 
         return str(output_path)
 
@@ -693,61 +717,107 @@ class RIGOL_MSO1000:
         Returns:
             String to saved file
         """
-        
+    
         os.makedirs("measurements", exist_ok=True)
 
         path = Path("measurements") / filename
+
+        if path.suffix == "":
+            path = path.with_suffix(".png")
 
         if self.sock is None and self.inst is None:
             logger.warning("No connection available to fetch Rigol screenshot")
             return str(path)
 
+        data = None
+
+        # ---------------------------
+        # Socket connection
+        # ---------------------------
+
         if self.sock is not None:
+
             try:
+
                 self.sock.settimeout(30)
                 self.sock.sendall(b":DISPlay:DATA?\n")
+
                 data = b""
+
                 while True:
+
                     chunk = self.sock.recv(1024 * 1024)
+
                     if not chunk:
                         break
+
                     data += chunk
-                    if len(data) > 8 and data.startswith(b"#"):
+
+                    if (len(data) > 8 and data.startswith(b"#")):
+
                         try:
+
                             n_digits = int(data[1:2])
+
                             length = int(data[2:2 + n_digits].decode("ascii"))
-                            if len(data) >= 2 + n_digits + length:
-                                data = data[2 + n_digits:2 + n_digits + length]
+
+                            if (len(data)>= 2 + n_digits + length):
+
+                                data = data[2 + n_digits: 2 + n_digits + length]
+
                                 break
+
                         except Exception:
                             pass
-                if data:
-                    path.write_bytes(data)
-                return str(path)
+
             except Exception as exc:
+
                 logger.warning(f"Failed to fetch Rigol screenshot: {exc}")
+
                 return str(path)
 
-        try:
-            self.inst.timeout = 30000
-            self.inst.chunk_size = 20 * 1024 * 1024
-            self.inst.write(":DISPlay:DATA?")
-            data = self.inst.read_raw()
-        except Exception as exc:
-            logger.warning(f"Failed to fetch Rigol screenshot: {exc}")
-            return str(path)
+        else:
+
+            try:
+
+                self.inst.timeout = 30000
+                self.inst.chunk_size = 20 * 1024 * 1024
+
+                self.inst.write(":DISPlay:DATA?")
+
+                data = self.inst.read_raw()
+
+            except Exception as exc:
+
+                logger.warning(f"Failed to fetch Rigol screenshot: {exc}")
+
+                return str(path)
 
         if data:
+
             path.write_bytes(data)
 
-        self.__add_scope_labels(
-            image_path=path
-        )
+            logger.debug(f"Saved screenshot to {path}")
 
-        for labels in self.labels:
-            self.labels[labels] = None
-        
-        return path
+        try:
+
+            path = Path(
+                self.__add_scope_labels(
+                    image_path=path,
+                    create_copy=False
+                )
+            )
+
+        except Exception as exc:
+
+            logger.exception(exc)
+
+            return str(path)
+
+        for label in self.labels:
+            self.labels[label] = ""
+
+        return str(path)
 
     def run(
         self
@@ -780,6 +850,8 @@ class RIGOL_MSO1000:
         Sets label for channel
         """
 
+        logger.debug(f"Setting label for channel {channel} to {label}")
+        
         self.__set_labels(
             channel=channel,
             label=label

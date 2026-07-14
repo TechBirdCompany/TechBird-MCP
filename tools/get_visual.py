@@ -1,7 +1,6 @@
-from typing import Optional, Literal
+from typing import Optional
 from loguru import logger
 from datetime import datetime
-import time
 
 from devices.dmm.dmm_protocol import dmm
 from devices.scope.scope_protocol import scope

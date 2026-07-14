@@ -145,33 +145,19 @@ class RIGOL_DMM800:
 
         return values[-1]
 
-    def _scpi_fetch_storage(
-        self, 
-        samples: int = 200
-    ) -> None:
+    def _scpi_fetch_storage(self) -> float:
         '''
-        Compatibility wrapper for the OWON-style buffered sampling API.
+        Fetch Storage of the last <samples> samples
         
         Args:
             samples     Number of samples that should be fetched
         '''
 
-        try:
-            response = self.query(f"R? {samples}")
-        except Exception as exc:
-            logger.warning(f"Failure fetching buffered values: {exc}")
-            response = self.query("FETCh?")
+        logger.info("Fetch storage")
 
-        values = self._parse_values(response)
-        if not values:
-            raise ValueError("No measurement values received from Rigol DMM")
+        return self.query(f"FETCh?")
 
-        if len(values) > samples:
-            return values[:samples]
-
-        return values
-
-    def _scpip_data_points(self) -> None:
+    def _scpip_data_points(self) -> int:
         '''
         Returns the number of data points currently stored in the measurement buffer.
         DM858 can store up to 500,000 readings while DM858E can store up to 20,000 readings
@@ -179,7 +165,7 @@ class RIGOL_DMM800:
 
         logger.info(f"Querying number of data points in measurement buffer")
 
-        self.query(f"DATA:POINTS?")
+        return self.query(f"DATA:POINTS?")
         
     def _scpi_data_remove(
         self, 
@@ -394,7 +380,6 @@ class RIGOL_DMM800:
         range_val = self.get_voltage_range(voltage)
 
         logger.info(f"Auto-selected range: {range_val}")
-
 
         numeric_range = {
             "100mV": 0.1,
@@ -767,6 +752,16 @@ class RIGOL_DMM800:
             List of measured values.
         """
 
-        return self._scpi_fetch_storage(
-            samples=samples
+        self._scpi_data_remove(
+            points=500000
         )
+
+        while True:
+            if self._scpip_data_points() < samples:
+                time.sleep(0.1)
+            else:
+                break
+
+        values = self._scpi_read()
+
+        return values[-samples:]

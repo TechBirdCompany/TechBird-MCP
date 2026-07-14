@@ -99,7 +99,6 @@ class SIGLENT_SDS2000:
 
     def _scpi_save_screenshot(self, 
         filename:str, 
-        suffix:str
     ) -> None:
         """
         Saves screenshot
@@ -112,16 +111,12 @@ class SIGLENT_SDS2000:
     
         os.makedirs("measurements", exist_ok=True)
 
-        if filename:
-            full_name = f"{filename}_SCOPE_{suffix}.bmp"
-        else:
-            full_name = f"SCOPE_{suffix}.bmp"
-
-        path = os.path.join("measurements", full_name)
+        path = Path("measurements") / filename
+        path = path.with_suffix(".png")
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
-        self.write("PRIN? BMP")
+        self.write("PRIN? PNG")
 
         data = self.inst.read_raw()
 
@@ -677,35 +672,13 @@ class SIGLENT_SDS2000:
         Args:
             <filename>  Filename of the screenshot
 
-            <suffix1>   Additional suffix to unify with other screenshots or so
-
-            <suffix2>   Additional suffix to unify with other screenshots or so
-
         Returns:
             String to saved file
         """
         
-        cmd = "PRIN? BMP"
-        logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
-        
-        self._scpi_display_hide_menu()
-    
-        os.makedirs("measurements", exist_ok=True)
-
-
-        path = Path(
-            "measurements"
-        ) / f"{filename}.bmp"
-
-        self.inst.chunk_size = 20 * 1024 * 1024
-
-        self.write(cmd)
-        data = self.inst.read_raw()
-
-        with open(path, "wb") as f:
-            f.write(data)
-
-        return str(path.resolve())
+        return self._scpi_save_screenshot(
+            filename=filename
+        )
 
     def run(
         self
