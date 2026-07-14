@@ -1,18 +1,17 @@
 from nicegui import ui
+
 from gui.config import load_config, save_config
+
 
 def build_configuration_page():
 
     cfg = load_config()
 
     devices = cfg["devices"]
-
     selected = cfg["selected"]
 
-    with ui.card().style(
-        'width:900px;'
-    ):
-        
+    with ui.card().style("width:900px;"):
+
         # ---------------------------
         # Header
         # ---------------------------
@@ -22,60 +21,82 @@ def build_configuration_page():
         ui.separator()
 
         # ---------------------------
+        # Helper
+        # ---------------------------
+
+        def update_resource(category, select_widget, resource_widget):
+
+            resource_widget.value = (
+                devices[category][select_widget.value]
+                .get("resource", "")
+            )
+    
+        def reload_from_config():
+
+            cfg = load_config()
+
+            devices = cfg["devices"]
+
+            scope_resource.value = (
+                devices["scope"][scope_type.value]
+                .get("resource", "")
+            )
+
+            dmm_resource.value = (
+                devices["dmm"][dmm_type.value]
+                .get("resource", "")
+            )
+
+            eload_resource.value = (
+                devices["eload"][eload_type.value]
+                .get("resource", "")
+            )
+
+        # ---------------------------
         # Scope area
         # ---------------------------
 
         ui.label("Scope")
 
         scope_type = ui.select(
-            list(devices["scope"].keys()),
-            value=selected["scope"]["type"],
+            options=list(devices["scope"].keys()),
+            value=selected["scope"],
             label="Type",
         ).classes("w-full")
 
         scope_resource = ui.input(
             label="Resource",
-            value=selected["scope"]["resource"]
+            value=devices["scope"][selected["scope"]].get("resource", ""),
         ).classes("w-full")
 
-        def update_scope():
-
-            scope_resource.value = (
-                devices["scope"]
-                [scope_type.value]
-                ["resource"]
-            )
-
-        scope_type.on("update:model-value", lambda e: update_scope())
+        scope_type.on(
+            "update:model-value",
+            lambda e: reload_from_config(),
+        )
 
         ui.separator()
 
         # ---------------------------
         # DMM area
         # ---------------------------
-        
+
         ui.label("DMM")
 
         dmm_type = ui.select(
-            list(devices["dmm"].keys()),
-            value=selected["dmm"]["type"],
+            options=list(devices["dmm"].keys()),
+            value=selected["dmm"],
             label="Type",
         ).classes("w-full")
 
         dmm_resource = ui.input(
             label="Resource",
-            value=selected["dmm"]["resource"]
+            value=devices["dmm"][selected["dmm"]].get("resource", ""),
         ).classes("w-full")
 
-        def update_dmm():
-
-            dmm_resource.value = (
-                devices["dmm"]
-                [dmm_type.value]
-                ["resource"]
-            )
-
-        dmm_type.on("update:model-value", lambda e: update_dmm())
+        dmm_type.on(
+            "update:model-value",
+            lambda e: reload_from_config(),
+        )
 
         ui.separator()
 
@@ -86,25 +107,20 @@ def build_configuration_page():
         ui.label("Electronic Load")
 
         eload_type = ui.select(
-            list(devices["eload"].keys()),
-            value=selected["eload"]["type"],
+            options=list(devices["eload"].keys()),
+            value=selected["eload"],
             label="Type",
         ).classes("w-full")
 
         eload_resource = ui.input(
             label="Resource",
-            value=selected["eload"]["resource"]
+            value=devices["eload"][selected["eload"]].get("resource", ""),
         ).classes("w-full")
 
-        def update_eload():
-
-            eload_resource.value = (
-                devices["eload"]
-                [eload_type.value]
-                ["resource"]
-            )
-
-        eload_type.on("update:model-value", lambda e: update_eload())
+        eload_type.on(
+            "update:model-value",
+            lambda e: reload_from_config(),
+        )
 
         ui.separator()
 
@@ -114,26 +130,32 @@ def build_configuration_page():
 
         def save():
 
-            cfg["selected"] = {
+            # aktuell ausgewählte Geräte speichern
+            cfg["selected"]["scope"] = scope_type.value
+            cfg["selected"]["dmm"] = dmm_type.value
+            cfg["selected"]["eload"] = eload_type.value
 
-                "scope": {
-                    "type": scope_type.value,
-                    "resource": scope_resource.value,
-                },
+            # Ressourcen des ausgewählten Geräts speichern
+            cfg["devices"]["scope"][scope_type.value]["resource"] = (
+                scope_resource.value
+            )
 
-                "dmm": {
-                    "type": dmm_type.value,
-                    "resource": dmm_resource.value,
-                },
+            cfg["devices"]["dmm"][dmm_type.value]["resource"] = (
+                dmm_resource.value
+            )
 
-                "eload": {
-                    "type": eload_type.value,
-                    "resource": eload_resource.value,
-                }
-            }
+            cfg["devices"]["eload"][eload_type.value]["resource"] = (
+                eload_resource.value
+            )
 
             save_config(cfg)
 
-            ui.notify("Configuration saved", type="positive")
+            ui.notify(
+                "Configuration saved",
+                type="positive",
+            )
 
-        ui.button("Save Configuration", on_click=save)
+        ui.button(
+            "Save Configuration",
+            on_click=save,
+        )
