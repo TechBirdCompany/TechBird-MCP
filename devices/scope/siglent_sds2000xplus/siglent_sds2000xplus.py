@@ -10,10 +10,9 @@ class SIGLENT_SDS2000:
         """
         resource examples:
         USB: 'USB0::0xF4EC::0xEE38::SDS1XXXX::INSTR'
-        LAN: 'TCPIP0::192.168.1.100::INSTR'
         """
         self.rm = pyvisa.ResourceManager()
-        self.inst = self.rm.open_resource(resource)
+        self.inst = self.rm.open_resource(f"TCPIP0::{resource}::INSTR")
         self.inst.timeout = 5000
 
         self.write("CHDR SHORT")
