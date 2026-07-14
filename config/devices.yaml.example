@@ -1,11 +1,11 @@
 devices:
   scope:
     SIGLENT_SDS2000:
-      resource: TCPIP0::10.10.10.687dfd1::INSTR
+      resource: TCPIP0::10.10.10.90::INSTR
     RIGOL_MSO1000:
-      resource: TCPIP0::10.10.10.6802::INSTR
+      resource: TCPIP0::10.10.10.62::INSTR
     RUS_HMO3000:
-      resource: TCPIP0::10.10.10.6803::INSTR
+      resource: TCPIP0::10.10.10.63::INSTR
   dmm:
     OWON_XDM1000:
       resource: AUTO1
