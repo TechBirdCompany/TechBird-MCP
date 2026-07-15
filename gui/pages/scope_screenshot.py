@@ -4,7 +4,7 @@ import yaml
 from nicegui import ui
 from loguru import logger
 
-from gui.config import load_config, create_device
+from gui.config import load_config, create_device, get_selected_device_config
 from tools.get_visual import get_screenshot_scope
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -84,7 +84,7 @@ def build_scope_screenshot_page():
             cfg = load_config()
 
             scope = create_device(
-                cfg["selected"]["scope"]
+                get_selected_device_config("scope")
             )
 
             image_path = get_screenshot_scope(

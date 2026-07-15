@@ -46,12 +46,15 @@ def get_selected_device_name(category):
 
 
 def get_selected_device_config(category):
+
     config = load_config()
 
     device_name = config["selected"][category]
 
-    return config["devices"][category][device_name]
+    device_cfg = config["devices"][category][device_name].copy()
+    device_cfg["type"] = device_name
 
+    return device_cfg
 
 def get_selected_resource(category):
     device_cfg = get_selected_device_config(category)
