@@ -52,6 +52,11 @@ def build_configuration_page():
                 .get("resource", "")
             )
 
+            powersupply_resource.value = (
+                devices["powersupply"][powersupply_type.value]
+                .get("resource", "")
+            )
+
         # ---------------------------
         # Scope area
         # ---------------------------
@@ -125,6 +130,30 @@ def build_configuration_page():
         ui.separator()
 
         # ---------------------------
+        # Power Supply area
+        # ---------------------------
+
+        ui.label("Power Supply")
+
+        powersupply_type = ui.select(
+            options=list(devices["powersupply"].keys()),
+            value=selected["powersupply"],
+            label="Type",
+        ).classes("w-full")
+
+        powersupply_resource = ui.input(
+            label="Resource",
+            value=devices["powersupply"][selected["powersupply"]].get("resource", ""),
+        ).classes("w-full")
+
+        powersupply_type.on(
+            "update:model-value",
+            lambda e: reload_from_config(),
+        )
+
+        ui.separator()
+
+        # ---------------------------
         # Save button
         # ---------------------------
 
@@ -134,6 +163,7 @@ def build_configuration_page():
             cfg["selected"]["scope"] = scope_type.value
             cfg["selected"]["dmm"] = dmm_type.value
             cfg["selected"]["eload"] = eload_type.value
+            cfg["selected"]["powersupply"] = powersupply_type.value
 
             # Ressourcen des ausgewählten Geräts speichern
             cfg["devices"]["scope"][scope_type.value]["resource"] = (
@@ -146,6 +176,10 @@ def build_configuration_page():
 
             cfg["devices"]["eload"][eload_type.value]["resource"] = (
                 eload_resource.value
+            )
+
+            cfg["devices"]["powersupply"][powersupply_type.value]["resource"] = (
+                powersupply_resource.value
             )
 
             save_config(cfg)

@@ -12,19 +12,17 @@ class powersupply(Protocol):
         """
         ...
         
-
     def power_on_off(
         self,
-        enable: bool = False
+        enable: Literal["ON", "OFF"] = "OFF"
     ) -> None:
         """
         Powers channel on
 
         Args:
-            <enable>   True|False
+            <enable>   ON|OFF
         """
         ...
-
 
     def set_values(
         self,
@@ -59,18 +57,6 @@ class powersupply(Protocol):
         Locks the power supply
 
         Args:
-
-        """
-        ...
-
-    def setup(
-        self,
-        mode: Literal["CV", "CV"]
-    ) -> None:
-        """
-        Setup for the used device
-
-        Args:
-            <mode>  CC|CV
+            <lock_enable>   TRUE|FALSE
         """
         ...

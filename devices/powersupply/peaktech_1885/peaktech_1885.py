@@ -1,7 +1,8 @@
 import serial
 import time
 from loguru import logger
-
+from serial.tools import list_ports
+from typing import Protocol, Literal, runtime_checkable
 
 class PEAKTECH_1885:
 
@@ -24,96 +25,95 @@ class PEAKTECH_1885:
             write_timeout=timeout,
         )
 
+
     @classmethod
-    def connect(
-        cls,
-        port: str = "COM23",
-    ) -> "PEAKTECH_1885":
+    def auto_connect(cls) -> "PEAKTECH_1885":
 
-        ps = cls(port)
+        ports = [p.device for p in list_ports.comports()]
 
-        try:
-            resp = ps.command("GMAX")
+        logger.info(f"Searching PeakTech on: {ports}")
 
-            logger.success(
-                f"PeakTech detected on {port}"
-            )
+        for port in ports:
+            try:
+                logger.debug(f"Trying {port}")
 
-            logger.info(f"GMAX Response: {resp}")
+                ps = cls(port)
 
-            return ps
+                resp = ps.command("GMAX")
 
-        except Exception:
-            ps.close()
-            raise
+                if resp:
+                    logger.success(
+                        f"PeakTech detected on {port}"
+                    )
+                    logger.info(
+                        f"GMAX Response: {resp}"
+                    )
+                    return ps
+
+                ps.close()
+
+            except Exception as ex:
+                logger.debug(
+                    f"{port} failed: {ex}"
+                )
+
+        raise RuntimeError(
+            "No PeakTech 1885 power supply found"
+        )
 
     def command(
-        self,
-        cmd: str,
-        arg: str = "",
-    ) -> list:
-
+        self, 
+        cmd: str, 
+        arg: str = ""
+    )-> list:
+        
         tx = f"{cmd}{self.address}{arg}\r"
-
-        logger.debug(f"TX: {repr(tx)}")
 
         self.inst.reset_input_buffer()
 
-        self.inst.write(tx.encode())
+        self.inst.write(tx.encode("ascii"))
         self.inst.flush()
 
-        raw = (
-            self.inst.read_until(b"OK")
-            .decode(errors="ignore")
-            .strip()
-        )
+        time.sleep(0.1)
 
-        logger.debug(f"RAW RX: {repr(raw)}")
+        raw = self.inst.read_all()
 
-        response = [
-            x.strip()
-            for x in raw.split("\r")
-            if x.strip() and x.strip() != "OK"
+        text = raw.decode("ascii", errors="ignore")
+
+        return [
+            line.strip()
+            for line in text.split("\r")
+            if line.strip() and line.strip() != "OK"
         ]
 
-        return response
-
     def close(self):
-
         if self.inst and self.inst.is_open:
             self.inst.close()
 
     # -----------------------------------------
-    # Device Commands
+    # SCPI Commands... not really but we still name it that
     # -----------------------------------------
 
-    def remote_on(self):
+    def _scpi_remote_on(self) -> None:
+        """
+        Disable front panel keypad and make PS to Remote Mode
+        """
+
+        logger.info("Lock front Panel")
         self.command("SESS")
 
-    def remote_off(self):
+    def _scpi_remote_off(self) -> None:
+        """
+        Enable front panel keypad and make PS to exit Remote Mode
+        """
+        
+        logger.info("Unlock front Panel")
         self.command("ENDS")
 
-    def set_voltage(
-        self,
-        voltage: float,
-    ):
-        value = f"{int(voltage * 10):03d}"
-        self.command("VOLT", value)
-
-    def set_current(
-        self,
-        current: float,
-    ):
-        value = f"{int(current * 10):03d}"
-        self.command("CURR", value)
-
-    def output_on(self):
-        self.command("SOUT", "1")
-
-    def output_off(self):
-        self.command("SOUT", "0")
-
-    def get_values(self):
+    def _scpi_get_current_data(self) -> tuple[float, float]:
+        """
+        Get Voltage & Current reading from PS
+        """
 
         resp = self.command("GETD")
 
@@ -123,6 +123,157 @@ class PEAKTECH_1885:
         data = resp[0]
 
         voltage = int(data[:4]) * 0.01
-        current = int(data[4:8]) * 0.0001
+        current = int(data[4:8]) * 0.001
 
         return voltage, current
+    
+    def _scpi_get_target_data(self) -> tuple[float, float]:
+        """
+        Get Voltage & Current Set Value from PS
+        """
+
+        resp = self.command("GETS")
+
+        if not resp:
+            return None
+
+        data = resp[0]
+
+        voltage = int(data[:4]) * 0.01
+        current = int(data[4:8]) * 0.001
+
+        return voltage, current
+    
+    def _scpi_set_voltage(
+            self,
+            voltage: float = 0
+    ) -> None:
+        """
+        Set Voltage Level
+
+        Args:
+            <voltage>   Float
+        """
+
+        logger.info(f"Set voltage to: {voltage}")
+
+        voltage = f"{int(voltage*10):03d}"
+
+        self.command(
+            cmd = f"VOLT",
+            arg= f"{voltage}"
+        )
+
+    def _scpi_set_current(
+        self,
+        current: float = 0
+    ) -> None:
+        """
+        Set current Level
+
+        Args:
+            <current>   Float
+        """
+
+        logger.info(f"Set current to: {current}")
+
+        current = f"{int(current*100):03d}"
+
+        self.command(
+            cmd = f"CURR",
+            arg= f"{current}"
+        )
+
+    def _scpi_disable(
+        self,
+        disable: bool = True
+    ) -> None:
+        """
+        Disable/Enable output
+
+        Args:
+            <disable>   True|False
+        """
+
+        logger.info(f"Set the power state to diable: {disable}")
+
+        self.command(
+            cmd = "SOUT",
+            arg = int(disable)
+        )
+
+    # -----------------------------------------
+    # API Commands
+    # -----------------------------------------
+
+    def identify(self) -> str:
+        """
+        Identifies the device.
+
+        Returns:
+            Result of *IDN?
+        """
+        
+        logger.warning(f"Function not supported")
+
+        
+    def power_on_off(
+        self,
+        enable: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Powers channel on
+
+        Args:
+            <enable>   ON|OFF
+        """
+        
+        if enable == "OFF":
+            self._scpi_disable(True)
+        else:
+            self._scpi_disable(False)
+
+    def set_values(
+        self,
+        voltage: float = 0,
+        current: float = 0
+    ) -> None:
+        """
+        Sets voltage and current of power supply
+
+        Args:
+            <voltage>
+            <current>
+        """
+
+        self._scpi_set_voltage(voltage)
+        self._scpi_set_current(current)
+
+    def get_value(
+        self
+    ) -> tuple[float, float]:
+        """
+        Gets voltage and current of power supply
+
+        Returns:
+            <voltage>, <current>
+        """
+        voltage, current = self._scpi_get_current_data()
+
+        return voltage, current
+
+    def lock(
+        self,
+        lock_enable: bool = False
+    ) -> None:
+        """
+        Locks the power supply
+
+        Args:
+            <lock_enable>   TRUE|FALSE
+        """
+        
+        if lock_enable == True:
+            self._scpi_remote_on()
+        else:
+            self._scpi_remote_off()

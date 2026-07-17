@@ -16,6 +16,11 @@ devices:
       resource: AUTO
     PEAKTECH_2275:
       resource: AUTO
+  powersupply:
+    PEAKTECH_1885:
+      resource: AUTO
+    PEAKTECH_6070:
+      resource: AUTO
 selected:
   scope: SIGLENT_SDS2000
   dmm: OWON_XDM1000

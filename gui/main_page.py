@@ -5,27 +5,52 @@ from gui.pages.api_test import build_api_test_page
 from gui.pages.load_test import build_load_test_page
 from gui.pages.get_plot import build_get_plot_page
 from gui.pages.configuration import build_configuration_page
+from gui.widgets.power_supply_widget import build_power_supply_widget
 
 def build_main_page():
 
+
     # ---------------------------
-    # UI row with name and logo
+    # Header
     # ---------------------------
 
-    with ui.row().classes('w-full justify-between items-center'):
+    with ui.row().classes(
+        'w-full items-center no-wrap'
+    ).style(
+    'column-gap: 40px;'
+    ):
 
-        ui.label('TechBird - Master Control Programm').classes('text-h4')
+        with ui.column().classes(
+            'items-center'
+        ).style(
+            'width:120px;'
+        ):
 
-        logo = ui.image('assets/TechBird_Logo.png').style(
-            '''
-            width:100px;
-            height:100px;
-            '''
-        )
+            logo = ui.image(
+                'assets/TechBird_Logo.png'
+            ).style(
+                '''
+                width:120px;
+                height:120px;
+                '''
+            )
 
-        logo.tooltip('Double click to exit')
+            ui.label(
+                'MCP'
+            ).classes(
+                'text-h4 text-weight-bold'
+            )
 
-        logo.on('dblclick',lambda: os._exit(0))
+            logo.tooltip(
+                'Double click to exit'
+            )
+
+            logo.on(
+                'dblclick',
+                lambda: os._exit(0)
+            )
+
+        build_power_supply_widget()
 
     # ---------------------------
     # UI row with menus
