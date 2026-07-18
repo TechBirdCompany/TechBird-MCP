@@ -3,6 +3,7 @@ import yaml
 
 from nicegui import ui
 from loguru import logger
+from assets.theme import sizes, colors
 
 from gui.config import load_config, create_device, get_selected_device_config
 from tools.get_visual import get_screenshot_scope
@@ -166,9 +167,12 @@ def build_scope_screenshot_page():
             )
 
             ui.button(
-                "Create Screenshot",
-                on_click=create_screenshot
-            ).classes("w-full")
+                text = "Create Screenshot",
+                on_click = create_screenshot,
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                "w-full"
+            )
 
         with ui.card().style(
             """

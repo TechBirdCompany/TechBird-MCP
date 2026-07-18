@@ -3,8 +3,14 @@ from loguru import logger
 import threading
 from pathlib import Path
 import yaml
+from assets.theme import sizes, colors
 
-from gui.config import load_config, create_device
+from gui.config import (
+    load_config,
+    create_device,
+    get_selected_device_config,
+)
+
 from tools.test_load import test_load
 
 
@@ -144,15 +150,15 @@ def build_load_test_page():
             cfg = load_config()
 
             scope = create_device(
-                cfg["selected"]["scope"]
+                get_selected_device_config("scope")
             )
 
             dmm = create_device(
-                cfg["selected"]["dmm"]
+                get_selected_device_config("dmm")
             )
 
             eload = create_device(
-                cfg["selected"]["eload"]
+                get_selected_device_config("eload")
             )
 
             test_results = test_load(
@@ -186,7 +192,7 @@ def build_load_test_page():
 
     with ui.row().classes("w-full").style("align-items:flex-start"):
 
-        with ui.card().style("width:500px;"):
+        with ui.card().style("width:350px;"):
 
             ui.label("Load Test").classes("text-h6")
 
@@ -253,11 +259,12 @@ def build_load_test_page():
             )
 
             ui.button(
-                "Start Load Test",
-                on_click=lambda: threading.Thread(
+                text = "Start Load Test",
+                on_click = lambda: threading.Thread(
                     target=run_load_test,
                     daemon=True,
                 ).start(),
+                color = colors.GENERAL_BUTTON
             ).classes("w-full")
 
         with ui.card().style("flex:1;"):

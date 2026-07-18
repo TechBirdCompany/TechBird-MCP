@@ -1,4 +1,5 @@
 from nicegui import ui
+from assets.theme import sizes, colors
 
 from gui.config import load_config, save_config
 
@@ -61,23 +62,31 @@ def build_configuration_page():
         # Scope area
         # ---------------------------
 
-        ui.label("Scope")
+        with ui.row().classes(
+            "w-full h-full"
+        ):
 
-        scope_type = ui.select(
-            options=list(devices["scope"].keys()),
-            value=selected["scope"],
-            label="Type",
-        ).classes("w-full")
+            ui.label(
+                text = "Scope"
+            ).style(
+                "width:120px"
+            )
 
-        scope_resource = ui.input(
-            label="Resource",
-            value=devices["scope"][selected["scope"]].get("resource", ""),
-        ).classes("w-full")
+            scope_type = ui.select(
+                options=list(devices["scope"].keys()),
+                value=selected["scope"],
+                label="Type",
+            ).style("width:250px")
 
-        scope_type.on(
-            "update:model-value",
-            lambda e: reload_from_config(),
-        )
+            scope_resource = ui.input(
+                label="Resource",
+                value=devices["scope"][selected["scope"]].get("resource", ""),
+            ).classes("flex-grow")
+
+            scope_type.on(
+                "update:model-value",
+                lambda e: reload_from_config(),
+            )
 
         ui.separator()
 
@@ -85,23 +94,31 @@ def build_configuration_page():
         # DMM area
         # ---------------------------
 
-        ui.label("DMM")
+        with ui.row().classes(
+            "w-full h-full"
+        ):
 
-        dmm_type = ui.select(
-            options=list(devices["dmm"].keys()),
-            value=selected["dmm"],
-            label="Type",
-        ).classes("w-full")
+            ui.label(
+                text = "DMM"
+            ).style(
+                "width:120px"
+            )
 
-        dmm_resource = ui.input(
-            label="Resource",
-            value=devices["dmm"][selected["dmm"]].get("resource", ""),
-        ).classes("w-full")
+            dmm_type = ui.select(
+                options=list(devices["dmm"].keys()),
+                value=selected["dmm"],
+                label="Type",
+            ).style("width:250px")
 
-        dmm_type.on(
-            "update:model-value",
-            lambda e: reload_from_config(),
-        )
+            dmm_resource = ui.input(
+                label="Resource",
+                value=devices["dmm"][selected["dmm"]].get("resource", ""),
+            ).classes("flex-grow")
+
+            dmm_type.on(
+                "update:model-value",
+                lambda e: reload_from_config(),
+            )
 
         ui.separator()
 
@@ -109,23 +126,31 @@ def build_configuration_page():
         # E-Load area
         # ---------------------------
 
-        ui.label("Electronic Load")
+        with ui.row().classes(
+            "w-full h-full"
+        ):
 
-        eload_type = ui.select(
-            options=list(devices["eload"].keys()),
-            value=selected["eload"],
-            label="Type",
-        ).classes("w-full")
+            ui.label(
+                text = "Electronic Load"
+            ).style(
+                "width:120px"
+            )
 
-        eload_resource = ui.input(
-            label="Resource",
-            value=devices["eload"][selected["eload"]].get("resource", ""),
-        ).classes("w-full")
+            eload_type = ui.select(
+                options=list(devices["eload"].keys()),
+                value=selected["eload"],
+                label="Type",
+            ).style("width:250px")
 
-        eload_type.on(
-            "update:model-value",
-            lambda e: reload_from_config(),
-        )
+            eload_resource = ui.input(
+                label="Resource",
+                value=devices["eload"][selected["eload"]].get("resource", ""),
+            ).classes("flex-grow")
+
+            eload_type.on(
+                "update:model-value",
+                lambda e: reload_from_config(),
+            )
 
         ui.separator()
 
@@ -133,23 +158,31 @@ def build_configuration_page():
         # Power Supply area
         # ---------------------------
 
-        ui.label("Power Supply")
+        with ui.row().classes(
+            "w-full h-full"
+        ):
 
-        powersupply_type = ui.select(
-            options=list(devices["powersupply"].keys()),
-            value=selected["powersupply"],
-            label="Type",
-        ).classes("w-full")
+            ui.label(
+                text = "Power Supply"
+            ).style(
+                "width:120px"
+            )
 
-        powersupply_resource = ui.input(
-            label="Resource",
-            value=devices["powersupply"][selected["powersupply"]].get("resource", ""),
-        ).classes("w-full")
+            powersupply_type = ui.select(
+                options=list(devices["powersupply"].keys()),
+                value=selected["powersupply"],
+                label="Type",
+            ).style("width:250px")
 
-        powersupply_type.on(
-            "update:model-value",
-            lambda e: reload_from_config(),
-        )
+            powersupply_resource = ui.input(
+                label="Resource",
+                value=devices["powersupply"][selected["powersupply"]].get("resource", ""),
+            ).classes("flex-grow")
+
+            powersupply_type.on(
+                "update:model-value",
+                lambda e: reload_from_config(),
+            )
 
         ui.separator()
 
@@ -190,6 +223,7 @@ def build_configuration_page():
             )
 
         ui.button(
-            "Save Configuration",
+            text = "Save Configuration",
             on_click=save,
+            color = colors.GENERAL_BUTTON
         )

@@ -1,7 +1,13 @@
 from nicegui import ui
 from loguru import logger
+from assets.theme import sizes, colors
 
-from gui.config import load_config, create_device
+from gui.config import (
+    load_config,
+    create_device,
+    get_selected_device_config,
+)
+
 from tools.get_visual import get_plot_dmm
 
 from pathlib import Path
@@ -65,7 +71,9 @@ def build_get_plot_page():
 
             cfg = load_config()
 
-            dmm = create_device(cfg["selected"]["dmm"])
+            dmm = create_device(
+                get_selected_device_config("dmm")
+            )
 
             image_path = get_plot_dmm(
                 device=dmm,
@@ -129,12 +137,22 @@ def build_get_plot_page():
             ).classes("w-full").on("change", lambda e: persist())
 
             ui.button(
-                "Create Plot",
-                on_click=create_plot
-            ).classes("w-full")
+                text = "Create Plot",
+                on_click=create_plot,
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                "w-full"
+            )
 
         with ui.card().style("flex:1;"):
 
             ui.label("Preview").classes("text-h6")
 
-            preview = ui.image().classes("w-full")
+            preview = ui.image().classes(
+                "w-full"
+            ).style(
+                """
+                height:450px,
+                object-fit:contain
+                """
+            )

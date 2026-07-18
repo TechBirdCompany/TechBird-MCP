@@ -14,6 +14,7 @@ from devices.electronic_load.peaktech_2275.peaktech_2275 import PEAKTECH_2275
 from devices.powersupply.powersupply_protocol import powersupply
 from devices.powersupply.peaktech_1885.peaktech_1885 import PEAKTECH_1885
 from devices.powersupply.peaktech_6070.peaktech_6070 import PEAKTECH_6070
+from devices.powersupply.korad_ka3000.korad_ka3000 import KORAD_KA3010DS
 
 DEVICE_INFO = {
 
@@ -58,7 +59,6 @@ DEVICE_INFO = {
     },
 
     # Power Supply
-    # ELOAD
     "PEAKTECH_1885": {
         "protocol": powersupply,
         "class": PEAKTECH_1885,
@@ -68,6 +68,12 @@ DEVICE_INFO = {
     "PEAKTECH_6070": {
         "protocol": powersupply,
         "class": PEAKTECH_6070,
+        "auto": True,
+    },
+
+    "KORAD_KA3010DS": {
+        "protocol": powersupply,
+        "class": KORAD_KA3010DS,
         "auto": True,
     },
 }

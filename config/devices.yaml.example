@@ -21,6 +21,8 @@ devices:
       resource: AUTO
     PEAKTECH_6070:
       resource: AUTO
+    KORAD_KD3000
+      resource: AUTO
 selected:
   scope: SIGLENT_SDS2000
   dmm: OWON_XDM1000

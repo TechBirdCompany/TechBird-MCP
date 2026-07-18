@@ -1,5 +1,6 @@
 import os
 from nicegui import ui, app
+from assets.theme import sizes, colors
 from gui.pages.scope_screenshot import build_scope_screenshot_page
 from gui.pages.api_test import build_api_test_page
 from gui.pages.load_test import build_load_test_page
@@ -66,15 +67,40 @@ def build_main_page():
 
             ui.label('Navigation').classes('text-h6')
 
-            nav_scope = ui.button('Scope Screenshot').classes('w-full')
+            nav_scope = ui.button(
+                text = 'Scope Screenshot',
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                'w-full'
+            )
 
-            nav_plot = ui.button('DMM Plot').classes('w-full')
+            nav_plot = ui.button(
+                text = 'DMM Plot',
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                'w-full'
+            )
 
-            nav_load = ui.button('Load Test').classes('w-full')
+            nav_load = ui.button(
+                text = 'Load Test',
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                'w-full'
+            )
 
-            nav_api = ui.button('API Test').classes('w-full')
+            nav_api = ui.button(
+                text = 'API Test',
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                'w-full'
+            )
     
-            nav_config = ui.button('Configuration').classes('w-full')
+            nav_config = ui.button(
+                text = 'Configuration',
+                color = colors.GENERAL_BUTTON
+            ).classes(
+                'w-full'
+            )
 
         content = ui.column().classes('flex-grow')
 

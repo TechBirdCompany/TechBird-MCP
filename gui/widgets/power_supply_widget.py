@@ -1,41 +1,13 @@
 from collections import deque
-
+from assets.theme import sizes, colors
 from nicegui import ui
 
-from gui.config import (
-    create_device,
-    get_selected_device_config,
-)
-
+from gui.config import create_device, get_selected_device_config
 
 def build_power_supply_widget():
 
     power_state = False
-
-    # --------------------------------------------------
-    # Connect PSU
-    # --------------------------------------------------
-
-    try:
-
-        device_cfg = get_selected_device_config(
-            "powersupply"
-        )
-
-        ps = create_device(device_cfg)
-
-        try:
-            ps.lock(True)
-        except Exception:
-            pass
-
-    except Exception as ex:
-
-        print(
-            f"PSU connect failed: {ex}"
-        )
-
-        ps = None
+    ps = None
 
     # --------------------------------------------------
     # History
@@ -55,97 +27,137 @@ def build_power_supply_widget():
     # Layout
     # --------------------------------------------------
 
+    card_height = 190
+
     with ui.row().classes(
-        "flex-grow no-wrap items-start"
+        "w-full no-wrap items-stretch"
     ).style(
-        "column-gap: 20px;"
+        "gap:12px;"
     ):
 
-        # ----------------------------------------------
-        # Controls
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # CONTROL CARD
+        # --------------------------------------------------
 
-        with ui.column().style(
-            """
-            width:180px;
-            min-width:180px;
-            """
-        ):
-
-            with ui.row().classes("items-center"):
-
-                ui.label("USET").style("width:50px")
-
-                vset = ui.number(
-                    value=12.0,
-                    step=0.1,
-                    format="%.1f",
-                ).props(
-                    "dense outlined input-class=text-right"
-                ).style(
-                    """
-                    width:80px;
-                    """
-                )
-
-                ui.label(" V")
-
-            with ui.row().classes("items-center"):
-
-                ui.label("ISET").style("width:50px")
-
-                iset = ui.number(
-                    value=1.0,
-                    step=0.01,
-                    format="%.2f",
-                ).props(
-                    "dense outlined input-class=text-right"
-                ).style(
-                    """
-                    width:80px;
-                    """
-                )
-
-                ui.label(" A")
-
-            with ui.row().classes(
-                "w-full justify-center"
-            ):
-
-                apply_button = ui.button(
-                    "APPLY"
-                ).props(
-                    "dense"
-                ).style(
-                    """
-                    width:70px;
-                    """
-                )
-
-                power_button = ui.button(
-                    "OFF",
-                    color="red",
-                ).props(
-                    "dense"
-                ).style(
-                    """
-                    width:70px;
-                    """
-                )
-
-
+        control_card_width = 350
 
         with ui.card().style(
-            """
-            width:200px;
-            padding:10px;
+            f"""
+            width:{control_card_width}px;
+            height:{card_height}px;
+            padding:12px;
             """
         ):
 
-            with ui.column().classes("w-full"):
+            with ui.column().classes(
+                "w-full h-full items-center"
+            ):
+
+                with ui.row().classes(
+                    "items-center justify-between"
+                ).style(
+                    "width:300px;"
+                ):
+
+                    ui.label(
+                        "USET"
+                    ).style(
+                        "width:100px;"
+                    )
+
+                    vset = ui.number(
+                        value=24.0,
+                        step=0.1,
+                        format="%.1f",
+                    ).props(
+                        "dense outlined input-class=text-right"
+                    ).style(
+                        "width:100px;"
+                    )
+
+                    ui.label("V")
+
+                with ui.row().classes(
+                    "items-center justify-between"
+                ).style(
+                    "width:300px;"
+                ):
+
+                    ui.label(
+                        "ISET"
+                    ).style(
+                        "width:100px;"
+                    )
+
+                    iset = ui.number(
+                        value=2.0,
+                        step=0.01,
+                        format="%.2f",
+                    ).props(
+                        "dense outlined input-class=text-right"
+                    ).style(
+                        """
+                        width:100px;
+                        """
+                    )
+
+                    ui.label("A")
+
+                ui.element("div").classes(
+                    "flex-grow"
+                )
+
+                with ui.row().style(
+                    """
+                    width:300px;
+                    gap:8px;
+                    """
+                ):
+                    
+                    connect_button = ui.button(
+                        text = "CONNECT",
+                        icon = "cable",
+                        color = colors.ORANGE
+                    ).props(
+                        "dense"
+                    ).style(
+                        f"""
+                        width:146px;
+                        height:{sizes.BUTTON_HEIGHT}px;
+                        """
+                    )
+
+                    apply_button = ui.button(
+                        text = "APPLY",
+                        icon = "save",
+                        color = colors.BLUE
+                    ).props(
+                        "dense"
+                    ).style(
+                        f"""
+                        width:146px;
+                        height:{sizes.BUTTON_HEIGHT}px;
+                        """
+                    )
+
+        # --------------------------------------------------
+        # ACTUAL VALUES CARD
+        # --------------------------------------------------
+
+        with ui.card().style(
+            f"""
+            width:220px;
+            height:{card_height}px;
+            padding:12px;
+            """
+        ):
+
+            with ui.column().classes(
+                "w-full h-full"
+            ):
 
                 vact = ui.label(
-                    "U   0.00 V"
+                    "UOUT  0.000 V"
                 ).style(
                     """
                     font-family:monospace;
@@ -154,7 +166,7 @@ def build_power_supply_widget():
                 )
 
                 iact = ui.label(
-                    "I   0.000 A"
+                    "IOUT  0.000 A"
                 ).style(
                     """
                     font-family:monospace;
@@ -163,7 +175,7 @@ def build_power_supply_widget():
                 )
 
                 pact = ui.label(
-                    "P   0.00 W"
+                    "POUT  0.000 W"
                 ).style(
                     """
                     font-family:monospace;
@@ -171,88 +183,236 @@ def build_power_supply_widget():
                     """
                 )
 
+                ui.element("div").classes(
+                    "flex-grow"
+                )
 
-        # ----------------------------------------------
-        # Graph
-        # ----------------------------------------------
+                power_button = ui.button(
+                    text = "OFF",
+                    icon = "power_settings_new",
+                    color = colors.RED
+                ).props(
+                    f"""
+                    dense
+                    """
+                ).style(
+                    f"""
+                    width:100%;
+                    height:{sizes.BUTTON_HEIGHT}px;
+                    """
+                )
 
-        graph = ui.echart({
+        # --------------------------------------------------
+        # GRAPH CARD
+        # --------------------------------------------------
 
-            "animation": False,
-
-            "grid": {
-                "left": 5,
-                "right": 5,
-                "top": 5,
-                "bottom": 5,
-            },
-
-            "xAxis": {
-                "type": "category",
-                "show": False,
-                "data": list(
-                    range(120)
-                ),
-            },
-
-            "yAxis": [
-                {
-                    "type": "value",
-                    "name": "U [V]",
-                    "position": "left",
-                    "splitLine": {
-                        "show": True,
-                    },
-                },
-                {
-                    "type": "value",
-                    "name": "I [A]",
-                    "position": "right",
-                    "splitLine": {
-                        "show": False,
-                    },
-                },
-            ],
-
-            "series": [
-
-                {
-                    "name": "Voltage",
-                    "type": "line",
-                    "symbol": "none",
-                    "smooth": True,
-                    "yAxisIndex": 0,
-                    "data": list(
-                        voltage_history
-                    ),
-                    "lineStyle": {
-                        "width": 2,
-                        "color": "#1976D2",
-                    },
-                },
-
-                {
-                    "name": "Current",
-                    "type": "line",
-                    "symbol": "none",
-                    "smooth": True,
-                    "yAxisIndex": 1,
-                    "data": list(
-                        current_history
-                    ),
-                    "lineStyle": {
-                        "width": 2,
-                        "color": "#D32F2F",
-                    },
-                },
-            ],
-        }).classes(
+        with ui.card().classes(
             "flex-grow"
         ).style(
+            f"""
+            height:{card_height}px;
+            padding:8px;
             """
-            height:160px;
-            """
-        )
+        ):
+
+            graph = ui.echart({
+
+                "animation": False,
+
+                "grid": {
+                    "left": 5,
+                    "right": 5,
+                    "top": 5,
+                    "bottom": 5,
+                },
+
+                "xAxis": {
+                    "type": "category",
+                    "show": False,
+                    "data": list(range(120)),
+                },
+
+                "yAxis": [
+                    {
+                        "type": "value",
+                        "name": "U [V]",
+                        "splitLine": {
+                            "show": False,
+                        },
+                        "nameTextStyle": {
+                            "fontWeight": "bold",
+                            "color": colors.BLUE,
+                            "fontSize": 14,
+                        },
+                        "axisLabel": {
+                            "color": colors.BLUE,
+                            "fontWeight": "bold",
+                        },
+                    },
+                    {
+                        "type": "value",
+                        "name": "I [A]",
+                        "position": "right",
+                        "splitLine": {
+                            "show": False,
+                        },
+                        "nameTextStyle": {
+                            "fontWeight": "bold",
+                            "color": colors.RED,
+                            "fontSize": 14,
+                        },
+                        "axisLabel": {
+                            "color": colors.RED,
+                            "fontWeight": "bold",
+                        },
+                    },
+                ],
+
+                "series": [
+                    {
+                        "name": "Voltage",
+                        "type": "line",
+                        "symbol": "none",
+                        "smooth": True,
+                        "yAxisIndex": 0,
+                        "data": list(voltage_history),
+                        "color": colors.BLUE 
+                    },
+                    {
+                        "name": "Current",
+                        "type": "line",
+                        "symbol": "none",
+                        "smooth": True,
+                        "yAxisIndex": 1,
+                        "data": list(current_history),
+                        "color": colors.RED,
+                    },
+                ],
+            }).classes(
+                "w-full"
+            ).style(
+                """
+                width:100%
+                height:100%;
+                """
+            )
+
+    # --------------------------------------------------
+    # Helper
+    # --------------------------------------------------
+
+    def reset_display():
+
+        vact.set_text("UOUT  0.000 V")
+
+        iact.set_text("IOUT  0.000 A")
+
+        pact.set_text("POUT  0.000 W")
+
+    # --------------------------------------------------
+    # Device handling
+    # --------------------------------------------------
+
+    def connect():
+
+        nonlocal ps
+
+        try:
+
+            device_cfg = get_selected_device_config("powersupply")
+
+            ps = create_device(device_cfg)
+
+            try:
+                ps.lock(True)
+            except Exception:
+                pass
+
+            connect_button.set_text("CONNECTED")
+
+            connect_button.style(
+                f"""
+                background: {colors.GREEN};
+                color: white
+                """
+            )
+
+            connect_button.update()
+
+            ui.notify(
+                "Power supply connected",
+                type="positive",
+            )
+
+        except Exception as ex:
+
+            ps = None
+
+            ui.notify(
+                f"Connection failed: {ex}",
+                type="negative",
+            )
+
+    def disconnect():
+
+        nonlocal ps
+        nonlocal power_state
+
+        if ps is None:
+            return
+
+        try:
+
+            try:
+                ps.power_on_off("OFF")
+            except Exception:
+                pass
+
+            try:
+                ps.close()
+            except Exception:
+                pass
+
+        finally:
+
+            ps = None
+            power_state = False
+
+            power_button.set_text("OFF")
+            
+            power_button.style(
+                f"""
+                background: {colors.RED};
+                color: white
+                """
+            )
+
+            power_button.update()
+
+            connect_button.set_text("DISCONNECTED")
+
+            connect_button.style(
+                f"""
+                background: {colors.ORANGE};
+                color: white
+                """
+            )           
+
+            connect_button.update()
+
+            reset_display()
+
+            ui.notify(
+                "Disconnected",
+                type="info",
+            )
+
+    def connect_toggle():
+
+        if ps is None:
+            connect()
+        else:
+            disconnect()
 
     # --------------------------------------------------
     # Actions
@@ -261,6 +421,12 @@ def build_power_supply_widget():
     def apply_values():
 
         if ps is None:
+
+            ui.notify(
+                "Not connected",
+                type="warning",
+            )
+
             return
 
         try:
@@ -287,6 +453,12 @@ def build_power_supply_widget():
         nonlocal power_state
 
         if ps is None:
+
+            ui.notify(
+                "Not connected",
+                type="warning",
+            )
+
             return
 
         try:
@@ -295,30 +467,28 @@ def build_power_supply_widget():
 
             if power_state:
 
-                ps.power_on_off(
-                    "ON"
-                )
+                ps.power_on_off("ON")
 
-                power_button.set_text(
-                    "ON"
-                )
+                power_button.set_text("ON")
 
-                power_button.props(
-                    "color=green"
-                )
+                power_button.style(
+                    f"""
+                    background: {colors.GREEN};
+                    color: white
+                    """
+                )  
 
             else:
 
-                ps.power_on_off(
-                    "OFF"
-                )
+                ps.power_on_off("OFF")
 
-                power_button.set_text(
-                    "OFF"
-                )
+                power_button.set_text("OFF")
 
-                power_button.props(
-                    "color=red"
+                power_button.style(
+                    f"""
+                    background: {colors.RED};
+                    color: white
+                    """
                 )
 
             power_button.update()
@@ -335,6 +505,11 @@ def build_power_supply_widget():
         apply_values,
     )
 
+    connect_button.on(
+        "click",
+        connect_toggle,
+    )
+
     power_button.on(
         "click",
         power_changed,
@@ -346,38 +521,26 @@ def build_power_supply_widget():
 
     def update():
 
+        nonlocal ps
+
         if ps is None:
             return
 
         try:
 
-            voltage, current = (
-                ps.get_value()
-            )
+            voltage, current = (ps.get_value())
 
-            power = (
-                voltage * current
-            )
+            power = (voltage * current)
 
-            vact.set_text(
-                f"UOUT {voltage:>6.3f} V"
-            )
+            vact.set_text(f"UOUT {voltage:>6.3f} V")
 
-            iact.set_text(
-                f"IOUT {current:>6.3f} A"
-            )
+            iact.set_text(f"IOUT {current:>6.3f} A")
 
-            pact.set_text(
-                f"POUT {power:>6.3f} W"
-            )
+            pact.set_text(f"POUT {power:>6.3f} W")
 
-            voltage_history.append(
-                voltage
-            )
+            voltage_history.append(voltage)
 
-            current_history.append(
-                current
-            )
+            current_history.append(current)
 
             graph.options[
                 "series"
@@ -394,9 +557,10 @@ def build_power_supply_widget():
             graph.update()
 
         except Exception:
-            pass
+
+            disconnect()
 
     ui.timer(
-        0.2,
+        0.1,
         update,
     )

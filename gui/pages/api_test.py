@@ -1,10 +1,10 @@
 import io
 import contextlib
+from assets.theme import sizes, colors
 
 from nicegui import ui
 
 from utils.api_test import run_api_test
-
 
 def build_api_test_page():
 
@@ -26,4 +26,8 @@ def build_api_test_page():
             for line in buffer.getvalue().splitlines():
                 result.push(line)
 
-        ui.button('Run Protocol Check', on_click=execute)
+        ui.button(
+            text = 'Run Protocol Check', 
+            on_click = execute,
+            color = colors.GENERAL_BUTTON
+        )

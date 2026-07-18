@@ -8,6 +8,6 @@ async def main():
     build_main_page()
 
 ui.run(
-    title='TechBird MCP',
+    title='TechBird - Master Control Program',
     reload=False
 )
