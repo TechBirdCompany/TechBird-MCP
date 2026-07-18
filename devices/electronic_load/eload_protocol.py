@@ -1,61 +1,87 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Literal
 
 
 class eload(Protocol):
 
-    def identify(self):
+    def identify(
+        self
+    ) -> str:
         """
         Query device identification.
+        
+        Returns:
+            Result of *IDN?
         """
         ...
 
-    def load_on(self) -> None:
+    def load_on(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
         """
         Enable electronic load.
         """
         ...
 
-    def load_off(self) -> None:
+    def load_off(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
         """
         Disable electronic load.
         """
         ...
 
-    def get_load_state(self):
-        """
-        Query load state.
-        """
-        ...
-
     def set_mode(
         self,
-        mode: str = "CC",
-        channel: Optional[int] = None,
+        mode: Literal["CC"],
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Configure operating mode.
+
+        Args:
+            <mode>      Mode of channel for eload
+                        [CC]
+
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
         """
         ...
 
     def set_current(
         self,
         current: float,
-        channel: Optional[int] = None,
+        channel: Optional[Literal[1, 2]] = 1
     ) -> None:
         """
         Configure load current.
+
+        Args:
+            <current>    Set current for channel... as currently on CC is defined
+                        This definition need to be changed, when other modes should
+                        be supported
+                        [CC]
+
+            <channel>    Optional parameter as most do have only one channel
+                        But beside this; Number of channel
         """
         ...
 
     def fetch(
         self,
-        channel: Optional[int] = None,
-    ) -> Optional[tuple[float, float]]:
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> tuple[float, float]:
         """
         Read measurement values.
 
+        Args:
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+
         Returns:
-            (voltage, current)
+            Returns volage and current, which are mostly the returned values in SCPI command guides
+            [voltage, current]
         """
         ...
 

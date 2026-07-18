@@ -1,54 +1,78 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Literal
 
 
 class dmm(Protocol):
 
     def setup(
         self,
-        mode: str = "V",
-        range: float = 230,
-        speed: str = "HIGH",
-    ):
+        mode: Literal["V", "A"] = "V",
+        range: float = 0,
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
+    ) -> None:
         """
         Configure the device.
+
+        Args:
+            <mode>   Sets the mode 
+                     [V|A]
+            
+            <range>  Range is kind of a stupid name and should be the
+                     expected voltage which should be measured, as steps 
+                     are different with every dmm
+                     [0 = AUTO]
+
+            <speed>  Apperently most of DMMs do have speeds
+                     [SLOW|MID|FAST]
         """
         ...
 
-    def fetch_single(self) -> float:
+    def fetch_single(
+        self
+    ) -> float:
         """
         Gets the current measurement value.
+
+        Returns:
+            Returns the current value
         """
         ...
-
+        
     def fetch_storage(
         self,
         samples: int = 200,
-    ):
+    ) -> list[float]:
         """
         Gets multiple measurement values.
+
+        Args:
+            <samples>    Store for a number of samples before returning
 
         Returns:
             List of measured values.
         """
         ...
 
-    def set_display(self) -> None:
+    def set_display(
+        self,
+        scenario: Literal["STAT"]
+    ) -> None:
         """
-        Enables statistical display mode.
+        Enables verious scenarious
+
+        Args:
+            <scenario>   STAT    sets the display to a statistic mode
         """
         ...
 
-    def get_screenshot(
+    def save_screenshot(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
-    ):
+        filename: str = "TEMP"
+    ) -> None:
         """
-        Creates or retrieves a screenshot.
+        Retrieves a screenshot.
 
-        Returns:
-            File path or None.
+        Args:
+            <filename>     Label for the measured signal
         """
         ...
 
@@ -56,16 +80,31 @@ class dmm(Protocol):
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ):
+    ) -> str:
         """
         Creates a plot from stored measurements.
 
+        Args:
+            <title>             Title of the plot
+
+            <y_label>           y label...
+
+            <filename>          suffix for the filename
+
+            <nominal_value>     Nominal value, will be displayed as center line
+
+            <min_limit>         Minimal limit
+
+            <max_limit>         Maximal limit
+
+            <limit>             Limit to use for the fetch_storage function
+
         Returns:
-            Path to generated plot image.
+            Path to file
         """
         ...

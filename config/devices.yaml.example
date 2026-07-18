@@ -1,0 +1,29 @@
+devices:
+  scope:
+    SIGLENT_SDS2000:
+      resource: 10.10.10.90
+    RIGOL_MSO1000:
+      resource: 10.10.10.62
+    RUS_HMO3000:
+      resource: 10.10.10.63
+  dmm:
+    OWON_XDM1000:
+      resource: AUTO
+    RIGOL_DMM800:
+      resource: 10.10.10.04
+  eload:
+    EASTTESTER_ET54:
+      resource: AUTO
+    PEAKTECH_2275:
+      resource: AUTO
+  powersupply:
+    PEAKTECH_1885:
+      resource: AUTO
+    PEAKTECH_6070:
+      resource: AUTO
+    KORAD_KD3000
+      resource: AUTO
+selected:
+  scope: SIGLENT_SDS2000
+  dmm: OWON_XDM1000
+  eload: EASTTESTER_ET54

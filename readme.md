@@ -23,9 +23,3 @@ This programm will provide hardware specific commands mapped to univified API co
 - Written by not a professional
 - Errors are free to find and free to fix
 - Some stuff works some doesn't
-
----
-# To-Do
-- Cleanup
-- Really unify API
-- Better description of protocols

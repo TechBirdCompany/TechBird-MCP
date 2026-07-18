@@ -2,13 +2,13 @@
 
 import sys
 import time
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import pyvisa
 from loguru import logger
 from .channel import channel
 
 
-class EastTester_ET54:
+class EASTTESTER_ET54:
     """EastTester ET54 Series Electronic Load.
     
     Multi-channel electronic load controller supporting 1 or 2 channel models.
@@ -51,7 +51,6 @@ class EastTester_ET54:
         self.connection.read_termination = eol_read
         self.connection.write_termination = eol_write
 
-        # Query device identification
         logger.info("Querying device identification")
         idn_response = self.connection.query("*IDN?")
         tmp = idn_response.split()
@@ -65,7 +64,6 @@ class EastTester_ET54:
                 self.idn["hardware"],
             ) = tmp
         elif len(tmp) == 3 and tmp[0] == "XXXXXX":
-            # Handle Mustool branded device
             self.idn["model"] = tmp[0]
             self.idn["SN"] = None
             self.idn["firmware"] = tmp[1]
@@ -76,7 +74,6 @@ class EastTester_ET54:
         if model is not None:
             self.idn["model"] = model
 
-        # Initialize channels based on model
         model_upper = self.idn["model"].upper()
         if model_upper in ("ET5406A+", "ET5407A+", "ET5410", "ET5410A+", "ET5411", "ET5411A+"):
             self.ch1 = channel("1", self.write, self.query)
@@ -91,8 +88,10 @@ class EastTester_ET54:
         logger.info(f"ET54 initialized: {self.idn['model']} with {len(self.Channels)} channel(s)")
 
     @classmethod
-    def auto_connect(cls, **kwargs: Any) -> "EastTesterET54":
-        """Automatically detect and connect to first available ET54 device."""
+    def auto_connect(cls, **kwargs: Any) -> "EASTTESTER_ET54":
+        """
+        Automatically detect and connect to first available ET54 device.
+        """
         
         logger.info("Auto-detecting ET54 electronic load on serial ports")
 
@@ -110,7 +109,7 @@ class EastTester_ET54:
                     inst = rm.open_resource(resource_id)
                     inst.timeout = kwargs.get("timeout", 500)
 
-                    response = inst.query("*IDN?")
+                    response = inst.query("*IDN?").strip()
                     inst.close()
 
                     if isinstance(response, str):
@@ -145,20 +144,17 @@ class EastTester_ET54:
         info += str(self.ch1)
         return info
     
-
-
     # =========================================
     # Core Commands
     # =========================================
 
     def write(self, cmd: str) -> None:
-        """Send SCPI command and verify execution status.
+        """S
+        end SCPI command and verify execution status.
         
         Args:
-            cmd: SCPI command string
+            <cmd>   SCPI command string
             
-        Raises:
-            RuntimeError: If command execution fails
         """
         logger.debug(f"Sending command: {cmd}")
         response = self.connection.query(cmd)
@@ -177,12 +173,13 @@ class EastTester_ET54:
               cmd: str, 
               nrows: int = 1, 
               timeout: Optional[int] = None) -> Any:
-        """Send SCPI query command and read response.
+        """
+        Send SCPI query command and read response.
         
         Args:
-            cmd: SCPI query command string
-            nrows: Number of response lines to read (default 1)
-            timeout: Optional temporary timeout in milliseconds for this query
+            <cmd>       SCPI query command string
+            <nrows>     Number of response lines to read (default 1)
+            <timeout>   Optional temporary timeout in milliseconds for this query
             
         Returns:
             Single response string if nrows=1, list of strings if nrows>1
@@ -214,129 +211,166 @@ class EastTester_ET54:
             if timeout is not None:
                 self.connection.timeout = original_timeout
 
-    def close(self) -> None:
-        """Close connection to device."""
+    # =========================================
+    # SCPI Commands
+    # =========================================
+
+    def _scpi_close(self) -> None:
+        """
+        Close connection to device.
+        """
+
         logger.info("Closing connection to ET54")
+        
         self.connection.close()
 
-    def beep(self) -> None:
-        """Trigger device beep."""
-        logger.debug("Sending beep command")
+    def _scpi_beep(self) -> None:
+        """
+        Trigger device beep.
+        """
+        
+        logger.info("Sending beep command")
+        
         self.write("SYST:BEEP")
 
-    def reset(self) -> None:
-        """Reset device to factory defaults."""
+    def _scpi_reset(self) -> None:
+        """
+        Reset device to factory defaults.
+        """
+
         logger.info("Resetting ET54 to default state")
+        
         self.connection.write("RST")
 
-    def trigger(self) -> None:
-        """Send software trigger event."""
-        logger.debug("Sending trigger event")
+    def _scpi_trigger(self) -> None:
+        """
+        Send software trigger event.
+        """
+        
+        logger.info("Sending trigger event")
+        
         self.connection.write("TRG")
 
-    def unlock_local_interface(self) -> None:
-        """Unlock local interface to enable front panel buttons.
+    def _scpi_unlock_local_interface(self) -> None:
+        """
+        Unlock local interface to enable front panel buttons.
         
         Note: Sending any SCPI command will lock the interface again.
         """
         logger.info("Unlocking local interface")
+        
         self.write("SYST:LOCA")
 
-    def get_fan_state(self) -> Optional[str]:
-        """Query cooling fan state.
+    def _scpi_get_fan_state(self) -> Optional[str]:
+        """
+        Query cooling fan state.
         
         Returns:
             Fan state string or None if query fails
         """
         return self.query("SELF:FAN?")
     
-
-
-    # =========================================
-    # Identification
-    # =========================================
-
-    def identify(self) -> Optional[str]:
+    def _scpi_identify(self) -> Optional[str]:
         """Query device identification.
         
         Returns:
             Device ID string or None if failed
         """
         logger.info("Identifying device")
+
         return self.query("*IDN?")
 
+    def _scpi_load_on(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Enable channel
+        
+        Args:
+            <channel>   1|2
+        """
+        
+        logger.info(f"Enabling channel {channel}")
+        
+        if channel == 1:
+            self.ch1.on()
+        else:
+            self.ch2.on()
 
-
-    # =========================================
-    # Load Control
-    # =========================================
-
-    def load_on(self) -> None:
-        """Enable all channels."""
-        logger.info("Enabling all channels")
-        for ch in self.Channels:
-            ch.on()
-
-    def load_off(self) -> None:
-        """Disable all channels."""
-        logger.info("Disabling all channels")
-        for ch in self.Channels:
-            ch.off()
-
-
-
-    # =========================================
-    # Configuration
-    # =========================================
-
-
-    def set_mode(self, mode: str = "CC", channel: int = 1) -> None:
-        """Set load operating mode on selected channel.
+    def _scpi_load_off(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Disable channel.
 
         Args:
-            mode: Operating mode. Options include:
-                - "CC": Constant Current (default)
-                - "CV": Constant Voltage
-                - "CP": Constant Power
-                - "CR": Constant Resistance
-                See device manual for all available modes.
-            channel: Channel number (1 or 2)
+            <channel>   1|2
         """
+
+        logger.info(f"Disabling channel {channel}")
+        
+        if channel == 1:
+            self.ch1.off()
+        else:
+            self.ch2.off()
+
+
+    def _scpi_set_mode(
+        self,
+        mode: Literal["CC", "CV", "CP", "CR"] = "CC",
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Set load operating mode on selected channel.
+
+        Args:
+            <mode>      Operating mode. Options include:
+                        "CC": Constant Current (default)
+                        "CV": Constant Voltage
+                        "CP": Constant Power
+                        "CR": Constant Resistance
+                        See device manual for all available modes.
+
+            <channel>   Channel number (1 or 2)
+        """
+
         mode = mode.upper()
+        
         logger.info(f"Setting CH{channel} mode to {mode}")
+        
         self.Channels[channel - 1].set_function(mode)
 
-    def set_current(self, 
-                    current: float, 
-                    channel: int = 1,) -> None:
+    def _scpi_set_current(
+        self,
+        current: float,
+        channel: Optional[Literal[1, 2]] = 1,
+    ) -> None:
         """
         Set current on selected channel.
 
         Args:
-            current: Current in amperes
-            channel: Channel number
+            <current>   Current in amperes
+            <channel>   Channel number
         """
 
         logger.info(f"Setting CH{channel} current to {current} A")
 
         self.Channels[channel - 1].set_current(current)
 
-
-
-    # =========================================
-    # Measurement
-    # =========================================
-
-
-    def fetch(
+    def _scpi_fetch(
         self,
-        channel: int = 1,
-    ) -> Optional[tuple[float, float]]:
+        channel: Optional[Literal[1, 2]] = 1,
+    ) -> tuple[float, float]:
         """
         Read voltage and current from selected channel.
 
+        Args:
+            <channel>   1|2
+        
         Returns:
-            (voltage, current)
+            [voltage, current]
         """
 
         logger.info(f"Fetching measurements from CH{channel}")
@@ -347,3 +381,114 @@ class EastTester_ET54:
         current = ch.get_current()
 
         return (float(voltage),float(current))
+    
+    # =========================================
+    # API Commands
+    # =========================================
+
+    def identify(
+        self
+    ) -> str:
+        """
+        Query device identification.
+        
+        Returns:
+            Result of *IDN?
+        """
+
+        return self._scpi_identify()
+    
+    def load_on(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Enable electronic load.
+        """
+
+        self._scpi_load_on(
+            channel=channel
+        )
+
+    def load_off(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Disable electronic load.
+        """
+
+        self._scpi_load_off(
+            channel=channel
+        )
+
+    def set_mode(
+        self,
+        mode: Literal["CC"],
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Configure operating mode.
+
+        Args:
+            <mode>      Mode of channel for eload
+                        [CC]
+
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+        """
+
+        self._scpi_set_mode(
+            mode=mode,
+            channel=channel
+        )
+
+    def set_current(
+        self,
+        current: float,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> None:
+        """
+        Configure load current.
+
+        Args:
+            <current>   Set current for channel... as currently on CC is defined
+                        This definition need to be changed, when other modes should
+                        be supported
+                        [CC]
+
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+        """
+
+        self._scpi_set_current(
+            current=current,
+            channel=channel
+        )
+
+    def fetch(
+        self,
+        channel: Optional[Literal[1, 2]] = 1
+    ) -> tuple[float, float]:
+        """
+        Read measurement values.
+
+        Args:
+            <channel>   Optional parameter as most do have only one channel
+                        But beside this; Number of channel
+
+        Returns:
+            Returns volage and current, which are mostly the returned values in SCPI command guides
+            [voltage, current]
+        """
+
+        return self._scpi_fetch(
+            channel=channel
+        )
+    
+    def close(self) -> None:
+        """
+        Close connection.
+        """
+
+        self._scpi_close()

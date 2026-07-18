@@ -1,79 +1,122 @@
 import pyvisa
-import datetime
 import os
 import time
 from loguru import logger
+import typing
+from pathlib import Path
 
-class Siglent_SDS2000:
+class SIGLENT_SDS2000:
     def __init__(self, resource):
         """
         resource examples:
         USB: 'USB0::0xF4EC::0xEE38::SDS1XXXX::INSTR'
-        LAN: 'TCPIP0::192.168.1.100::INSTR'
         """
         self.rm = pyvisa.ResourceManager()
-        self.inst = self.rm.open_resource(resource)
+        self.inst = self.rm.open_resource(f"TCPIP0::{resource}::INSTR")
         self.inst.timeout = 5000
 
-        # SCPI empfohlen: kurze Headers deaktivieren/aktivieren je nach Bedarf
         self.write("CHDR SHORT")
 
     # ---------------------------
     # BASIC COMMUNICATION
     # ---------------------------
     def write(self, cmd):
-        self.inst.write(cmd)
+        try:
+            self.inst.write(cmd)
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
 
     def query(self, cmd):
-        return self.inst.query(cmd).strip()
+        try:
+            return self.inst.query(cmd).strip()
+        except:
+            logger.warning(f"Failure with command -> {cmd}")
 
     def close(self):
         cmd = "CLOSE"
-        logger.debug(f"Closing connection to Siglent SDS oscilloscope -> {cmd}")
-        self.inst.close()
+        try:
+            self.inst.close()
+        except:
+            logger.warning(f"Could not close connection")
 
     # ---------------------------
-    # BASIC FUNCTIONS
+    # SCPI Commands
     # ---------------------------
-    def display_hide_menu(self):
-        cmd = ":DISPlay:HIDemenu"
-        logger.debug(f"Hiding menu on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
+    def _scpi_display_hide_menu(self) -> None:
+        """
+        Hides menu
+        """
 
-    def display_clear(self):
-        cmd = ":DISPlay:CLEar"
-        logger.debug(f"Clearing display on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
+        logger.debug(f"Hiding menu")
 
-    def display_persistance(self, duration="OFF"):
+        self.write(F":DISPlay:HIDemenu")
+
+    def _scpi_display_clear(self) -> None:
+        """
+        Clears Display
+        """
+
+        logger.debug(f"Clearing display")
+
+        self.write(":DISPlay:CLEar")
+
+    def _scpi_display_persistance(self, 
+        duration: float
+    ) -> None:
         """
         Set the display persistence duration.
-        duration: "OFF", "INFinite", "1S", "5S", "10S", "30S"
-        Pay attention to the corret writing of INFinite, otherwise the command will not be accepted by the device.
+        Internal settings which need to be mapped "OFF", "INFinite", "1S", "5S", "10S", "30S" 
+        Pay attention to the corret writing of INFinite, otherwise the command
+
+        Args:
+            <duration>  Time in Seconds
+                        0 is OFF
+                        -1 is infinite
         """
-        cmd = f":DISPlay:PERSistence {duration}"
-        logger.debug(f"Setting display persistence to {duration} -> {cmd}")
-        self.write(cmd)
+
+        if duration == 0:
+            duration = "OFF"
+        elif duration == -1:
+            duration = "INFinite"
+        else:
+            allowed = [1, 5, 10, 30]
 
 
-    def save_screenshot(self, filename=None, suffix=None):
-        cmd = "PRIN? BMP"
-        logger.debug(f"Saving screenshot from Siglent SDS oscilloscope -> {cmd}")
+            nearest = min(allowed, key=lambda x: abs(x - duration))
+
+            if nearest != duration:
+                logger.warning(
+                    f"Unsupported persistence {duration}s. "
+                    f"Using nearest supported value: {nearest}s."
+                )
+
+            duration = f"{nearest}S"
+
+        logger.debug(f"Setting display persistence to {duration}")
         
-        self.display_hide_menu()
+        self.write(f":DISPlay:PERSistence {duration}")
+
+    def _scpi_save_screenshot(self, 
+        filename:str, 
+    ) -> None:
+        """
+        Saves screenshot
+        
+        """
+
+        logger.debug(f"Saving screenshot from Siglent SDS oscilloscope")
+        
+        self._scpi_display_hide_menu()
     
         os.makedirs("measurements", exist_ok=True)
 
-        if filename:
-            full_name = f"{filename}_SCOPE_{suffix}.bmp"
-        else:
-            full_name = f"SCOPE_{suffix}.bmp"
-
-        path = os.path.join("measurements", full_name)
+        path = Path("measurements") / filename
+        path = path.with_suffix(".png")
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
-        self.write(cmd)
+        self.write("PRIN? PNG")
+
         data = self.inst.read_raw()
 
         with open(path, "wb") as f:
@@ -81,431 +124,613 @@ class Siglent_SDS2000:
 
         return path
 
-
-
-    # ---------------------------
-    # IDENTIFICATION
-    # ---------------------------
-    def identify(self):
-        cmd = "*IDN?"
-        logger.debug(f"Querying ID from Siglent SDS oscilloscope -> {cmd}")
-        return self.query(cmd)
-
-    # ---------------------------
-    # ACQUIRE CONTROL
-    # ---------------------------
-    def run(self):
-        cmd = ":TRIGger:RUN"
-        logger.debug(f"Starting acquisition on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
-
-    def stop(self):
-        cmd = ":TRIGger:STOP"
-        logger.debug(f"Stopping acquisition on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
-
-    def set_resolution(self, bit="8Bits"):
+    def _scpi_identify(self) -> str:
         """
-        Set the acquisition resolution to 10-bits or 8-bits.
-        bit: "10bits" or "8bits"
+        Identifies the device.
+
+        Returns:
+            Result of *IDN?
         """
-        cmd = f":ACQuire:RESolution {bit}"
-        logger.debug(f"Setting acquisition resolution to {bit} -> {cmd}")
-        self.write(cmd)
 
+        logger.debug(f"Querying ID")
 
-    # ---------------------------
-    # CHANNEL SETTINGS
-    # ---------------------------
-    def set_channel_bwlimit(self, channel, bw="FULL"):
+        return self.query("*IDN?")
+
+    def _scpi_run(self) -> None:
+        """
+        Sets the scope into run mode
+        """
+
+        logger.debug(f"Starting acquisition")
+        
+        self.write(":TRIGger:RUN")
+
+    def _scpi_stop(self) -> None:
+        """
+        Sets the scope into stop mode
+        """
+
+        logger.debug(f"Stopping acquisition")
+        
+        self.write(":TRIGger:STOP")
+
+    def _scpi_set_resolution(
+        self, 
+        bit: typing.Literal["8Bits", "10Bits"]
+    ) -> None:
+        """
+        Set the acquisition resolution to AUTO or OFF
+        For the Siglent it is a native 8 Bit scope, but can scale up to 10
+        
+        Args:
+            <bit>       Desired bitrate
+        """
+
+        logger.debug(f"Setting acquisition resolution to {bit}")
+
+        self.write(f":ACQuire:RESolution {bit}")
+
+    def _scpi_set_channel_bwlimit(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4], 
+        bw: typing.Literal["FULL", "20M"]
+    ) -> None:
         """
         Set the bandwidth limit for a specific channel.
-        channel: 1, 2, 3, or 4 
-        bw: "FULL" or "20MHz"
-        """
-        cmd = f":CHANnel{channel}:BWLimit {bw}"
-        logger.debug(f"Setting bandwidth limit for channel {channel} to {bw} -> {cmd}")
-        self.write(cmd)
 
-    def set_channel_vertical_scale(self, channel, volts_per_div):
+        Args:
+            <channel>   Channel 1 to 4
+            <bw>        Bandwith of channel.
         """
-        Set the vertical scale (volts per division) for a specific channel.
-        channel: 1, 2, 3, or 4
-        volts_per_div: float value representing volts per division
-        """
-        cmd = f":CHANnel{channel}:SCALe {volts_per_div}"
-        logger.debug(f"Setting vertical scale for channel {channel} to {volts_per_div} V/div -> {cmd}")
-        self.write(cmd)
+        
+        logger.debug(f"Setting bandwidth limit for channel {channel} to {bw}")
+        
+        self.write(f":CHANnel{channel}:BWLimit {bw}")
 
-    def set_channel_offset(self, channel, offset):
+    def _scpi_set_channel_vertical_scale(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        volts_per_div: float = 10
+    ) -> None:
+        '''
+        Sets the vertical scale for the indicated channel.
+        
+        Args:
+            <channel>   1|2|3|4
+            <scale>     1E-3 to 10 V/div
+        '''
+
+        logger.debug(f"Setting vertical scale for channel {channel} to {volts_per_div} V/div")
+
+        self.write(f":CHANnel{channel}:SCALe {volts_per_div}")
+
+    def _scpi_set_channel_offset(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        offset: float = 0
+    ) -> None:
         """
         Set the vertical offset for a specific channel.
-        channel: 1, 2, 3, or 4
-        offset: float value representing the offset
+                
+        Args:
+            <channel>   1 to 4
+            <offset>    Actual voltage of the origin of the channel
         """
-        cmd = f":CHANnel{channel}:OFFset {offset}"
-        logger.debug(f"Setting vertical offset for channel {channel} to {offset} V -> {cmd}")
-        self.write(cmd)
 
-    def set_channel_enable(self, channel, state=True):
-        cmd = f":CHANnel{channel}:SWITch {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting channel {channel} enable state to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
+        logger.debug(f"Setting vertical offset for channel {channel} to {offset} V")
 
-    def set_channel_coupling(self, channel, coupling="DC"):
+        self.write(f":CHANnel{channel}:OFFset {offset}")
+
+    def _scpi_set_channel_enable(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Enables channel
+
+        Args:
+            <channel>   1 to 4
+            <state>     ON|OFF
+        """
+
+        logger.debug(f"Setting channel {channel} enable state to {state}")
+        
+        self.write(f":CHANnel{channel}:SWITch {state}")
+
+    def _scpi_set_channel_coupling(
+        self,
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        coupling: typing.Literal["AC", "DC"] = "DC"
+    ) -> None:
         """
         Set the coupling mode for a specific channel.
-        channel: 1, 2, 3, or 4
-        coupling: "DC" or "AC"
+        
+        Args:
+            <channel>   1 to 4
+            <coupling>  AC|DC
         """
-        cmd = f":CHANnel{channel}:COUPling {coupling}"
-        logger.debug(f"Setting coupling mode for channel {channel} to {coupling} -> {cmd}")
-        self.write(cmd)
+        
+        logger.debug(f"Setting coupling mode for channel {channel} to {coupling}")
+        
+        self.write(f":CHANnel{channel}:COUPling {coupling}")
 
-    def set_channel_label_on_off(self, channel, state=False):
-        cmd = f":CHANnel{channel}:LABel {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting label visibility for channel {channel} to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
+    def _scpi_set_channel_label_on_off(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Enables the label of given channel
 
-    def set_channel_label_text(self, channel, text):
+        Args:
+            <channel>   1 to 4
+            <state>     ON|OFF
+        """
+
+        logger.debug(f"Setting label visibility for channel {channel} to {state}")
+
+        self.write(f":CHANnel{channel}:LABel {state}")
+
+    def _scpi_set_channel_label_text(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        text = ""
+    ) -> None:
         """
         Set the label text for a specific channel.
-        channel: 1, 2, 3, or 4
-        text: string value representing the label text 
+        
+        Args:
+            <channel>   1 to 4
+            <Text>      Label 
         """
-        cmd = f':CHANnel{channel}:LABel:TEXT "{text}"'
-        logger.debug(f"Setting label text for channel {channel} to '{text}' -> {cmd}")
-        self.write(cmd)
 
-    def set_channel_unit(self, channel, unit="V"):
+        if len(text) > 20:
+            logger.warning(
+                f"Label '{text}' exceeds 20 characters. "
+                f"Truncating to '{text[:20]}'."
+            )
+            text = text[:20]
+
+        logger.debug(f"Setting label text for channel {channel} to {text}")
+        
+        self.write(f':CHANnel{channel}:LABel:TEXT "{text}"')
+
+    def _scpi_set_channel_unit(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        unit: typing.Literal["V", "A"] = "V"):
         """
         Set the unit for a specific channel.
-        channel: 1, 2, 3, or 4
-        unit: "V" or "A"
+        
+        Args:
+            <channel>   1 to 4
+            <unit>      V|A
         """
-        cmd = f":CHANnel{channel}:UNIT {unit}"
-        logger.debug(f"Setting unit for channel {channel} to {unit} -> {cmd}")
-        self.write(cmd)
+        
+        logger.debug(f"Setting unit for channel {channel} to {unit}")
+        
+        self.write(f":CHANnel{channel}:UNIT {unit}")
 
-
-    def set_channel_attenuation(self, channel, attenuation):
+    def _scpi_set_channel_attenuation(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1, 
+        attenuation: float = 10
+    ) -> None:
         """
         Set the attenuation for a specific channel.
-        channel: 1, 2, 3, or 4
-        attenuation: float value representing the attenuation
+        
+        Args:
+            <channel>       1 to 4
+            <attenuation>   float
         """
+
         attenuation_nr3 = f"{attenuation:.6E}"
 
-        cmd = f":CHANnel{channel}:PROBe VALue,{attenuation_nr3}"
+        logger.debug(f"Setting attenuation for channel {channel} to {attenuation}")
+
+        self.write(f":CHANnel{channel}:PROBe VALue,{attenuation_nr3}")
+
+    def _scpi_set_timebase(
+        self, 
+        sec_per_div: float
+    ) -> None:
+        """
+        Sets the timebase of the scope
+
+        Args:
+            <sec_per_div>   Seconds per Devision
+        """
         
-        logger.debug(
-            f"Setting attenuation for channel {channel} to {attenuation} "
-            f"(NR3: {attenuation_nr3}) -> {cmd}"
-        )
+        logger.debug(f"Setting timebase to {sec_per_div} s/div")
+        
+        self.write(f":TIMebase:SCALe {sec_per_div}")
 
-        self.write(cmd)
-
-
-    # ---------------------------
-    # TIMEBASE
-    # ---------------------------
-    def set_timebase(self, sec_per_div):
-        cmd = f":TIMebase:SCALe {sec_per_div}"
-        logger.debug(f"Setting timebase to {sec_per_div} s/div -> {cmd}")
-        self.write(cmd)
-
-    # ---------------------------
-    # TRIGGER
-    # ---------------------------
-    def set_trigger_edge(self, level=0.0):
-        cmd = f":TRIGger:EDGE:LEVel {level}"
-        logger.debug(f"Setting trigger edge level to {level} V -> {cmd}")
-        self.write(cmd)
-
-    def set_trigger_edge_source(self, channel):
+    def _scpi_set_trigger_edge(
+        self, 
+        level: float = 0
+    ) -> None:
         """
-        Siglent SDS 2000xplus: Needs to activate the desired channel first, otherwise Ext Trigger will be selected
+        Sets the trigger edge level
+
+        Args:
+            <level> Level of the trigger
         """
-        cmd = f":TRIGger:EDGE:SOURce C{channel}"
-        logger.debug(f"Setting trigger edge source to channel {channel} -> {cmd}")
-        self.write(cmd)
 
-    # ---------------------------
-    # MEASUREMENT  
-    # ---------------------------
+        logger.debug(f"Setting trigger edge level to {level} V")
+        
+        self.write(f":TRIGger:EDGE:LEVel {level}")
 
-    def measure_statistics_on_off(self, state=True):
+    def _scpi_set_trigger_edge_source(
+        self, 
+        channel: typing.Literal[1, 2, 3, 4] = 1
+    ) -> None:
+        """
+        Sets the trigger source
+        
+        Args:
+            <channel>   1 to 4
+        """
+        
+        logger.debug(f"Setting trigger edge source to channel {channel}")
+        
+        self.write(f":TRIGger:EDGE:SOURce C{channel}")
+
+    def _scpi_measure_statistics_on_off(
+        self, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         """
         Enable or disable measurement statistics on the oscilloscope.
-        state: True to enable, False to disable
+        
+        Args:
+            <state> ON|OFF
         """
-        cmd = f":MEASure:ADVanced:STATistics {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting measurement statistics to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
 
-    def measure_statistics_reset(self):
-        cmd = ":MEASure:ADVanced:STATistics:RESet"
-        logger.debug(f"Resetting measurement statistics on Siglent SDS oscilloscope -> {cmd}")
-        self.write(cmd)
+        logger.debug(f"Setting measurement statistics to {state}")
 
-    def measure_item(self, position, parameter):
+        self.write(f":MEASure:ADVanced:STATistics {state}")
+
+    def _scpi_measure_statistics_reset(self) -> None:
+        """
+        Resets statistics
+        """
+        
+        logger.debug(f"Resetting measurement statistics on Siglent SDS oscilloscope")
+        
+        self.write(":MEASure:ADVanced:STATistics:RESet")
+
+    def _scpi_measure_item(self, 
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        parameter: typing.Literal["MIN", "MAX", "PKPK", "RMS"] = "RMS"
+    ) -> None:
         """
         Measure a specific item on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        parameter:
-            {PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
-            TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
-            VSP|RPRE|PER|FREQ|TMAX|TMIN|PWID|NWID|DUTY|NDU
-            TY|WID|NBWID|DELAY|TIMEL|RISE|FALL|RISE10T90|FALL9
-            0T10|CCJ|PAREA|NAREA|AREA|ABSAREA|CYCLES|REDGE
-            S|FEDGES|EDGES|PPULSES|NPULSES|PHA|SKEW|FRR|F
-            RF|FFR|FFF|LRR|LRF|LFR|LFF|PACArea|NACArea|ACArea|A
-            BSACArea|PSLOPE|NSLOPE|TSR|TSF|THR|THF}
-        """
-        cmd = f":MEASure:ADVanced:P{position}:TYPE {parameter}"
-        logger.debug(f"Measuring {parameter} on channel {position} -> {cmd}")
-        return self.write(cmd)
 
-    def measure_source1(self, position, source):
-        """
-        Measure a specific source on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        source: "C1", "C2", "C3", "C4", "MATH", "REF1", "REF2", "REF3", "REF4"
-        """
-        cmd = f":MEASure:ADVanced:P{position}:SOURce1 C{source}"
-        logger.debug(f"Measuring source {source} on channel {position} -> {cmd}")
-        return self.write(cmd)
+        OFF is not supported with the Siglent, pelase use respective function
+        
+        Args:
+            <position>  Position of the measurment
 
-    def measure_on_off(self, position, state=True):
+            <parameter> Type of measurment
+                        PKPK|MAX|MIN|AMPL|TOP|BASE|LEVELX|CMEAN|MEAN|S
+                        TDEV|VSTD|RMS|CRMS|MEDIAN|CMEDIAN|OVSN|FPRE|O
+                        VSP|RPRE|PER|FREQ|TMAX|TMIN|PWID|NWID|DUTY|NDU
+                        TY|WID|NBWID|DELAY|TIMEL|RISE|FALL|RISE10T90|FALL9
+                        0T10|CCJ|PAREA|NAREA|AREA|ABSAREA|CYCLES|REDGE
+                        S|FEDGES|EDGES|PPULSES|NPULSES|PHA|SKEW|FRR|F
+                        RF|FFR|FFF|LRR|LRF|LFR|LFF|PACArea|NACArea|ACArea|A
+                        BSACArea|PSLOPE|NSLOPE|TSR|TSF|THR|THF
         """
-        Enable or disable a specific measurement on the oscilloscope.
-        position: 1, 2, 3, 4, or 5 (corresponding to the measurement slots on the oscilloscope)
-        state: True to enable, False to disable
+
+        logger.debug(f"Set measurment position {position} to {parameter}")
+
+        return self.write(f":MEASure:ADVanced:P{position}:TYPE {parameter}")
+
+    def _scpi_measure_source1(
+        self, 
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        channel: typing.Literal[1, 2, 3, 4] = 1
+    ) -> None:
         """
-        cmd = f":MEASure:ADVanced:P{position} {'ON' if state else 'OFF'}"
-        logger.debug(f"Setting measurement {position} to {'ON' if state else 'OFF'} -> {cmd}")
-        self.write(cmd)
+        Set the source for the set position
+
+        Args:
+            <position>  1 to 5
+
+            <channel>    1 to 4
+        """
+        
+        logger.debug(f"Measuring source {channel} on channel {position}")
+        
+        return self.write(f":MEASure:ADVanced:P{position}:SOURce1 C{channel}")
+
+    def _scpi_measure_on_off(
+        self, 
+        position: typing.Literal[1, 2, 3, 4, 5] = 1, 
+        state: typing.Literal["ON", "OFF"] = "OFF"
+    ) -> None:
+        """
+        Enable measurment on position
+
+        Args:
+            <position>  1 to 5
+
+            <state>     ON|OFF
+        """
+
+        logger.debug(f"Setting measurement {position} to {state}")
+        
+        self.write(f":MEASure:ADVanced:P{position} {state}")
 
     # ---------------------------
     # API Functions
     # ---------------------------
 
-    def set_measurement(
-        self,
-        position: int,
-        channel: int,
-        measurement_type: str,
-    ):
-
-        """
-        Adds a measurement to the screen.
-
-        Args:
-            place: Measurement slot.
-            channel: Channel number (1, 2, 3, or 4)
-            measurement_type:
-                OFF
-                VMAX
-                VMIN
-                VPP
-                VRMS
-                FREQ
-                PERIOD
-                DUTY
-                ...
-        """
-
-        if measurement_type == "OFF":
-            self.measure_on_off(
-                position=position,
-                state=False
-            )
-            
-            self.measure_statistics_on_off(
-                state=False
-            )
-            
-        else:
-
-            self.measure_on_off(
-                position=position,
-                state=True
-            )
-            
-            self.measure_statistics_on_off(
-                state=True
-            )
-
-            self.measure_source1(
-                position=position,
-                source=channel
-            )
-            
-            self.measure_item(
-                position=position,
-                parameter=measurement_type
-            )
-            
-    def reset(self):
-        """
-        Clears persistence,
-        statistics and measurements.
-        """
-        for i in range(1,5):
-            self.set_channel_enable(i, False)
+    def identify(
+        self
+    ) -> str:
         
-        for i in range(1,6):
-            self.set_measurement(i, 1, "OFF")
-
-        self.measure_statistics_on_off(False)
-
-        self.measure_statistics_reset()
-        self.display_clear()
-
-        time.sleep(2)
-
-    def set_persistence(
+        return(self._scpi_identify())
+    
+    def set_resolution(
         self,
-        duration: float,
-    ):
-        """
-        Enables display persistence.
-
-        Args:
-            time: Persistence duration in seconds.
-        """
-
-        if duration == 0:
-            self.display_persistance(
-                duration="OFF"
-            )
-
+        bit: typing.Literal[8, 16] = 16
+    ) -> None:
+        
+        if bit == 10: # Mapping    
+            bit_scope = "10Bits"
         else:
-            self.display_persistance(
-                duration=duration
-            )
+            bit_scope = "8Bits"
+        
+        self._scpi_set_resolution(
+            bit=bit_scope
+        )
 
     def set_channel(
         self,
-        channel: int,
-        enable: bool,
-        attenuation: float,
-        unit: str,
-        label: str,
-        coupling: str,
-        bandwidth_limit: str,
-        volts_per_div: float,
-        position: float,
-    ):
-        """
-        Configures a channel.
+        channel: typing.Literal[1, 2, 3, 4] = 1,
+        enable: typing.Literal["ON", "OFF"] = "ON",
+        attenuation: float = 10,
+        unit: typing.Literal["V", "A"] = "V",
+        label: str = "",
+        coupling: typing.Literal["AC", "DC"] = "DC",
+        bandwidth_limit: typing.Literal["FULL", "20MHz"] = "FULL",
+        volts_per_div: float = 5,
+        position: float = 0
+    ) -> None:
+        
+        self._scpi_set_channel_enable(
+            channel=channel,
+            state=enable
+        )
 
-        Args:
-            channel: Channel number.
-            enable: Show or hide channel.
-            attenuation: Probe attenuation (1x, 10x, 100x ...).
-            unit: V, A, W, ...
-            label: Channel label.
-            coupling: DC, AC, GND.
-            bandwidth_limit: Enable bandwidth limit.
-            scale: Vertical scale per division.
-            position: Vertical position.
-        """
-
-        if enable is False:
-            self.set_channel_enable(
-                channel=channel,
-                state=False
-            )
+        if enable == "OFF":
             return
-        else:
-            self.set_channel_enable(
-                channel=channel,
-                state=True
-            )
         
-        if not label:
-            self.set_channel_label_on_off(
-                state=False
-            )
-        
-        else:
-            self.set_channel_label_on_off(
-                channel=channel,
-                state=True
-            )
-
-            self.set_channel_label_text(
-                channel=channel,
-                text=label
-            )
-
-        self.set_channel_attenuation(
+        self._scpi_set_channel_attenuation(
             channel=channel,
             attenuation=attenuation
         )
 
-        self.set_channel_unit(
+        self._scpi_set_channel_unit(
             channel=channel,
             unit=unit
         )
 
-        self.set_channel_coupling(
+        if label == "":
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="OFF"
+            )
+        else:
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="ON"
+            )
+
+            self._scpi_set_channel_label_text(
+                channel=channel,
+                text=label
+            )
+
+        self._scpi_set_channel_attenuation(
+            channel=channel,
+            attenuation=attenuation
+        )
+
+        self._scpi_set_channel_coupling(
             channel=channel,
             coupling=coupling
         )
 
-        self.set_channel_bwlimit(
+        if bandwidth_limit == "20MHz": # Mapping
+            bandwidth_limit = "20M"
+
+        self._scpi_set_channel_bwlimit(
             channel=channel,
             bw=bandwidth_limit
         )
 
-        self.set_channel_vertical_scale(
+        self._scpi_set_channel_vertical_scale(
             channel=channel,
             volts_per_div=volts_per_div
         )
 
-        self.set_channel_offset(
+        self._scpi_set_channel_offset(
             channel=channel,
             offset=position
         )
-
+    
     def set_trigger(
         self,
         channel: int,
         mode: str,
-        level: float,
-    ):
-        """
-        Configures edge trigger.
-
-        Args:
-            channel: Trigger source.
-            mode: Trigger mode.
-            level: Trigger level.
-        """
-
-        self.set_trigger_edge_source(
+        level: float
+    ) -> None:
+        
+        self._scpi_set_trigger_edge_source(
             channel=channel
         )
 
-        self.set_trigger_edge(
+        self._scpi_set_trigger_edge(
             level=level
         )
+    
+    def set_timebase(
+        self,
+        sec_per_div: float
+    ) -> None:
+        
+        self._scpi_set_timebase(
+            sec_per_div=sec_per_div
+        )
 
+    def set_persistence(
+        self,
+        duration: float = 0
+    ) -> None:
+        
+        self._scpi_display_persistance(
+            duration=duration
+        )
+
+    def reset(
+        self
+    ) -> None:
+
+        for i in range(1, 4+1):
+            self._scpi_set_channel_enable(
+                channel=i,
+                state="OFF"
+            )
+
+        self._scpi_measure_statistics_on_off(
+            state="OFF"
+        )
+
+        for i in range(1, 5+1):
+
+            self._scpi_measure_on_off(
+                position=i,
+                state="OFF"
+            )
+
+        self._scpi_display_persistance(
+            duration=0
+        )
+
+        time.sleep(2)
+
+    def set_measurement(
+        self,
+        position: typing.Literal[1, 2, 3, 4, 5, 6] = 1,
+        channel: typing.Literal[1, 2, 3, 4] = 1,
+        measurement_type: typing.Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
+    ) -> None:
+                
+        if measurement_type == "OFF":
+
+            self._scpi_measure_on_off(
+                position=position,
+                channel = "OFF"
+            )
+            
+            self._scpi_measure_statistics_on_off(
+                state="OFF"
+            )
+
+            return
+        else:
+            self._scpi_measure_on_off(
+                position=position,
+                state = "ON"
+            )
+            
+            self._scpi_measure_statistics_on_off(
+                state="ON"
+            )
+
+            self._scpi_measure_source1(
+                position=position,
+                channel=channel
+            )
+
+            self._scpi_measure_item(
+                position=position,
+                parameter=measurement_type
+            )
+
+    def save_screenshot(
+        self,
+        filename: str = "TEMP",
+    ) -> str:
+        """
+        Save screenshot and return path.
+
+        Args:
+            <filename>  Filename of the screenshot
+
+        Returns:
+            String to saved file
+        """
+        
+        return self._scpi_save_screenshot(
+            filename=filename
+        )
+
+    def run(
+        self
+    ) -> None:
+        
+        self._scpi_run()
+
+    def stop(
+        self
+    ) -> None:
+        
+        self._scpi_stop()
+
+    def close(
+        self
+    ) -> None:
+        
+        self.close
 
     def get_count(
         self,
-        position: int,
-    ) -> float:
+        position: typing.Literal[1, 2, 3, 4, 5, 6] = 1
+    ) -> int:
 
-        cmd = (
-            f":MEASure:ADVanced:P{position}:STATistics? COUNt"
-        )
+        #logger.debug(f"Get count from statistics at position {position}")
 
-        logger.debug(
-            f"Get count from statistics "
-            f"at position {position} -> {cmd}"
-        )
+        return float(self.query(f":MEASure:ADVanced:P{position}:STATistics? COUNt"))
+    
+    def persistence_clear(self) -> None:
+        
+        self._scpi_display_clear()
 
-        return float(self.query(cmd))
+    def set_label(
+        self,
+        channel: typing.Literal[1, 2, 3, 4],
+        label: str
+    ) -> None:
+        """
+        Sets label for channel
+        """
+
+        if label == None or label == "":
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="OFF"
+            )
+        else:
+            self._scpi_set_channel_label_on_off(
+                channel=channel,
+                state="ON"
+            )
+
+            self._scpi_set_channel_label_text(
+                channel=channel,
+                text=label
+            )

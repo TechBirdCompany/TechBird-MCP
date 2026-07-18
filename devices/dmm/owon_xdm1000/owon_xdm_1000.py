@@ -1,7 +1,7 @@
 """OWON XDM1000 Digital Multimeter measurement functions."""
 
 import time
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Literal
 
 from xdm1000 import XDM1000
 from loguru import logger
@@ -12,9 +12,9 @@ class OWON_XDM1000:
     OVERHEAD_FACTOR = 1.5
 
     RATE_TO_INTERVAL = {
-        "HIGH": 0.015 * OVERHEAD_FACTOR,
-        "MID":  0.020 * OVERHEAD_FACTOR,
-        "LOW":  0.500 * OVERHEAD_FACTOR,
+        "F": 0.015 * OVERHEAD_FACTOR,   #FAST
+        "M":  0.020 * OVERHEAD_FACTOR,  #MID
+        "L":  0.500 * OVERHEAD_FACTOR,  #Low
     }
 
     def __init__(self):
@@ -22,29 +22,58 @@ class OWON_XDM1000:
 
         self.mode = "V"
         self.range = 230
-        self.speed = "HIGH"
+        self.speed = "F"
 
     # =========================================
-    # Setup Functions
+    # SCPI Ccommands
+    # =========================================
+
+    def _scpi_get_rate(
+        self
+    ) -> str:
+        """
+        Get the current rate of the DMM
+        """
+        rate = self.dmm.query("RATE?")
+        
+        logger.info(f"Current rate is {rate}")
+
+    # =========================================
+    # API Ccommands
     # =========================================
 
     def setup(
         self,
-        mode: str = "V",
-        range: float = 230,
-        speed: str = "HIGH",
+        mode: Literal["V", "A"] = "V",
+        range: float = 0,
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
     ) -> None:
         """
-        Configure the device to the desired settings.
+        Configure the device.
 
         Args:
-            mode:   V(olt) or A(mpere)
-            range:  Highest value that should be measured
-            speed:  LOW, MID or HIGH
+            <mode>   Sets the mode 
+                     [V|A]
+            
+            <range>  Range is kind of a stupid name and should be the
+                     expected voltage which should be measured, as steps 
+                     are different with every dmm
+                     [0 = AUTO]
+
+            <speed>  Apperently most of DMMs do have speeds
+                     [SLOW|MID|FAST]
         """
 
         mode = mode.upper()
         speed = speed.upper()
+
+        #Speed mapper
+        if speed == "SLOW":
+            speed = "L"
+        if speed == "MID":
+            speed = "M"
+        if speed == "FAST":
+            speed = "F"
 
         # Measurement mode
         if mode == "V":
@@ -52,28 +81,12 @@ class OWON_XDM1000:
         elif mode == "A":
             self.dmm.set_mode("ADC")
         else:
-            raise ValueError(
-                f"Unsupported mode '{mode}'. Use 'V' or 'A'."
-            )
+            logger.warning(f"Unsupported mode '{mode}'. Use 'V' or 'A'.")
 
-        # Measurement speed
-        rate_map = {
-            "LOW": "SLOW",
-            "MID": "MID",
-            "HIGH": "FAST",
-        }
+        self.dmm.set_rate(speed)
 
-        try:
-            self.dmm.set_rate(rate_map[speed])
-        except KeyError:
-            raise ValueError(
-                f"Unsupported speed '{speed}'. Use LOW, MID or HIGH."
-            )
-
-        # Measurement speed is stored locally for fetch_storage timing.
         self.speed = speed
 
-        # Range (if supported by library)
         try:
             self.dmm.set_range(range)
             logger.debug(f"Range set to {range}")
@@ -88,11 +101,6 @@ class OWON_XDM1000:
             f"range={range}, speed={speed}"
         )
 
-
-    # =========================================
-    # Measurement Functions
-    # =========================================
-
     def fetch_single(self) -> float:
         """
         Gets the current value which is displayed on the screen.
@@ -100,30 +108,26 @@ class OWON_XDM1000:
         Returns:
             Current measured value
         """
+
         value = self.dmm.measure()
 
-        logger.debug(
-            f"Current measurement: {value}"
-        )
+        logger.debug(f"Current measurement: {value}")
 
         return float(value)
-
-
 
     def fetch_storage(
         self,
         samples: int = 200,
-    ):
-        '''
-        Gets values for a given samples
+    ) -> list[float]:
+        """
+        Gets multiple measurement values.
 
         Args:
-            samples:    Sets how many samples should be gathered or
-                        how long the storage should be filled
+            <samples>   Store for a number of samples before returning
 
         Returns:
-            <VALUE>
-        '''
+            List of measured values.
+        """
 
         values = []
 
@@ -150,32 +154,29 @@ class OWON_XDM1000:
 
         return values
 
-
-
-    def set_display(self) -> None:
-        """
-        Sets the device in a state for a statistical measurement.
-
-        Note:
-            The OWON XDM1041 Python interface does not provide
-            remote control of the display layout. This function
-            exists only for API compatibility.
-        """
-        logger.warning(
-            "set_display() is not supported "
-            "by the OWON XDM1041"
-        )
-
-
-
-    def get_screenshot(
+    def set_display(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
+        scenario: Literal["STAT"]
     ) -> None:
         """
-        Get a screenshot of the current screen.
+        Enables verious scenarious
+
+        Args:
+            <scenario>  STAT    sets the display to a statistic mode
+        """
+        ...
+
+        logger.info("set_display() is not supported by the OWON XDM1041")
+
+    def save_screenshot(
+        self,
+        filename: str = "TEMP"
+    ) -> None:
+        """
+       Retrieves a screenshot.
+
+        Args:
+            <filename>     Label for the measured signal
 
         Note:
             The OWON XDM1041 does not provide a remote screenshot
@@ -189,28 +190,31 @@ class OWON_XDM1000:
 
         return None
 
-
-
     def get_plot(
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ):
-        values = self.fetch_storage(samples=limit)
+    ) -> str:
 
-        return plot_data(
+        values = self.fetch_storage(
+            samples=limit
+        )
+
+        path = plot_data(
             x_data=list(range(len(values))),
             y_data=values,
             title=title,
             y_label=y_label,
-            suffix=suffix,
+            filename=filename,
             unit=self.mode,
             nominal_value=nominal_value,
             min_limit=min_limit,
             max_limit=max_limit,
         )
+
+        return path

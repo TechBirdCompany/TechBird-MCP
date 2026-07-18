@@ -1,4 +1,9 @@
 loguru==0.7.3
 matplotlib==3.11.0
+nicegui==3.14.0
+Pillow==12.3.0
+pyserial==3.5
 pyvisa==1.16.2
+PyYAML==6.0.3
+reportlab==5.0.0
 xdm1000==0.1.0

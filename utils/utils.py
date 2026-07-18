@@ -6,7 +6,8 @@ from typing import Optional, List
 import re
 import matplotlib.pyplot as plt
 from loguru import logger
-
+from pathlib import Path
+import subprocess
 
 def to_float(value: str) -> float:
     """Extract and convert numeric value from string.
@@ -26,7 +27,6 @@ def to_float(value: str) -> float:
     """
     number = re.findall(r"[-+]?\d*\.?\d+", value)[0]
     return float(number)
-
 
 def round_125(value: float) -> float:
     """Round value to nearest "nice" number (1, 2, 5, 10, etc).
@@ -53,7 +53,6 @@ def round_125(value: float) -> float:
 
     return nice * (10 ** exponent)
 
-
 def calc_scale(value: float) -> float:
     """Calculate display scale for a measurement value.
     
@@ -68,7 +67,6 @@ def calc_scale(value: float) -> float:
     """
     raw = abs(value) / 4
     return round_125(raw)
-
 
 def get_folder(folder: Optional[str] = None) -> str:
     """Get or create measurements folder path.
@@ -89,14 +87,12 @@ def get_folder(folder: Optional[str] = None) -> str:
 
     return folder
 
-
-
 def plot_data(
     x_data,
     y_data,
     title: str,
     y_label: str,
-    suffix: str = "",
+    filename: str,
     unit: str = "",
     nominal_value: float = 0.0,
     min_limit: float = 0.0,
@@ -106,15 +102,23 @@ def plot_data(
     Plot measurement data with specification limits and save to file.
 
     Args:
-        x_data: X-axis values (usually sample numbers)
-        y_data: Measured values
-        title: Plot title
-        y_label: Y-axis label
-        suffix: Optional filename prefix/suffix
-        unit: Measurement unit (V, A, W, Ω, ...)
-        nominal_value: Target value
-        min_limit: Lower specification limit
-        max_limit: Upper specification limit
+        <x_data>        X-axis values (usually sample numbers)
+
+        <y_data>        Measured values
+
+        <title>         Plot title
+
+        <y_label>       Y-axis label
+
+        <filename>       Optional filename prefix/suffix
+
+        <unit>          Measurement unit (V, A, W, Ω, ...)
+
+        <nominal_value> Target value
+
+        <min_limit>     Lower specification limit
+
+        <max_limit>     Upper specification limit
 
     Returns:
         Path to saved PNG file or None
@@ -292,7 +296,6 @@ def plot_data(
     output_dir = get_folder()
     os.makedirs(output_dir, exist_ok=True)
 
-    filename = f"{title}_{suffix}".strip("_")
     filename = filename.replace(" ", "_")
 
     path = os.path.join(
@@ -311,3 +314,21 @@ def plot_data(
     plt.close(fig)
 
     return path
+
+def open_measurements_folder(
+    folder: str = "measurments"
+) -> None:
+    """
+    Opens Folder
+
+    Args:
+        <folder>    Folder to open
+    """
+
+    MEASUREMENTS_DIR = Path(folder)
+
+    MEASUREMENTS_DIR.mkdir(exist_ok=True)
+
+    subprocess.Popen(
+        ["explorer", str(MEASUREMENTS_DIR.resolve())]
+    )

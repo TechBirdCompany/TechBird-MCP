@@ -1,12 +1,14 @@
 import time
 from loguru import logger
 from utils.utils import *
+import sys
+from datetime import datetime
 
 from devices.dmm.dmm_protocol import dmm
 from devices.scope.scope_protocol import scope
 from devices.electronic_load.eload_protocol import eload
 
-def load_test(
+def test_load(
     scope: scope,
     dmm: dmm,
     eload: eload,
@@ -15,11 +17,40 @@ def load_test(
     min_voltage: float,
     domain: str,
     current: float,
+    samples: int = 200,
     single: bool = False
-):
+) -> str:
     """
     Measures the domain in idle and with mid and high load
+
+    Args:
+        <scope>             Scope
+
+        <dmm>               DMM
+
+        <eload>             E Load
+
+        <voltage>           Voltage value which is expected
+
+        <max_voltage>       Max voltage of <voltage>
+
+        <min_voltage>       Min voltage of <voltage>
+
+        <domain>            Domain name of <voltage>
+
+        <current>           Maximum current which should be available
+                            If <single> is true, it will measure only this current
+
+        <samples>           Number of samples which should be captured
+
+        <single>            Single measurment or with idle, half and full current
     """
+
+    created_files = []
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
 
     logger.info(
         f"Starting load test: "
@@ -38,7 +69,6 @@ def load_test(
         ]
 
     for test_current_label, test_current in test_points:
-
 
         current_label = f"{test_current:.2f}A"
 
@@ -59,7 +89,7 @@ def load_test(
         dmm.setup(  # Setup DMM
             mode="V",
             range=max_voltage,
-            speed="HIGH",
+            speed="FAST",
         )
 
         scope.stop()    # Stop scope
@@ -74,7 +104,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 1 of scope
             channel=1,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="V",
             label=f"{domain} @ {test_current}A",
@@ -86,7 +116,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="A",
             label=f"{domain} @ {test_current}A",
@@ -136,32 +166,43 @@ def load_test(
 
         scope.run() # Set scope in run mode
 
+        last_count = None
+
         while True:
-            count = scope.get_count(
-                position=1
-            )
+            count = scope.get_count(position=1)
 
-            logger.info(f"Scope Counter at: {count}")
+            if count != last_count: # Print only when sample increases
+                sys.stdout.write(
+                    f"\rMeasurement count: {count}/{samples}"
+                )
+                sys.stdout.flush()
+                last_count = count
 
-            if count >= 250:
+            if count >= samples:
+                print()
                 break
+
+            time.sleep(0.1)
 
         scope.stop() # Set scope in stop mode
 
-        scope.save_screenshot(  # Get screenshot of scope
-            filename=f"{domain}_DC",
-            suffix=f"{voltage}_{test_current_label}",
+        file = scope.save_screenshot(  # Get screenshot of scope
+            filename=f"{domain}@{str(test_current)}A_DC_SCOPE_{timestamp}",
         )
 
-        dmm.get_plot(   # Get Plot of voltage during load //BSC: needs to be paralized with time
+        created_files.append(file)
+
+        file = dmm.get_plot(
             title=f"{domain} DC Output @ {test_current}A",
             y_label=domain,
-            suffix=f"{domain} @ {current_label}",
+            filename=f"{domain}@{str(test_current)}A_DC_DMM_{timestamp}",
             nominal_value=voltage,
             min_limit=min_voltage,
             max_limit=max_voltage,
-            limit=250,
+            limit=samples,
         )
+
+        created_files.append(file)
 
         # ---------------------------
         # AC Measurment
@@ -171,7 +212,7 @@ def load_test(
 
         scope.set_channel(  # Prepare channel 1 to ripple measurment
             channel=1,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="V",
             label=f"{domain} @ {test_current}A",
@@ -183,7 +224,7 @@ def load_test(
 
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
-            enable=True,
+            enable="ON",
             attenuation=10,
             unit="A",
             label=f"{domain} @ {test_current}A",
@@ -231,24 +272,37 @@ def load_test(
 
         scope.run() # Set Scope to run mode
 
+        last_count = None
+
         while True:
-            count = scope.get_count(
-                position=1
-            )
+            count = scope.get_count(position=1)
 
-            logger.info(f"Scope Counter at: {count}")
+            if count != last_count: # Print only when count increases
+                sys.stdout.write(
+                    f"\rMeasurement count: {count}/{samples}"
+                )
+                sys.stdout.flush()
+                last_count = count
 
-            if count >= 250:
+            if count >= samples:
+                print()
                 break
 
-        scope.save_screenshot(  # Create screenshot
-            filename=f"{domain}_RIPPLE",
-            suffix=f"{voltage}V_{test_current}A",
+            time.sleep(0.1)
+
+        file = scope.save_screenshot(  # Create screenshot
+            filename=f"{domain}@{str(test_current)}A_AC_SCOPE_{timestamp}",
         )
+
+        created_files.append(file)
 
         eload.load_off() # Disable eload
 
         if single == True:
             break
 
+    eload.close()
+
     logger.info("Load test completed")
+
+    return created_files

@@ -4,6 +4,7 @@ import os
 import time
 from loguru import logger
 from utils.utils import plot_data
+from typing import Literal
 
 # ---------------------------
 # Constants & ENUMS
@@ -23,11 +24,10 @@ class RIGOL_DMM800:
     def __init__(self, resource):
         """
         resource examples:
-        USB: 'USB0::0xF4EC::0xEE38::SDS1XXXX::INSTR'
         LAN: 'TCPIP0::192.168.1.100::INSTR'
         """
         self.rm = pyvisa.ResourceManager()
-        self.inst = self.rm.open_resource(resource)
+        self.inst = self.rm.open_resource(f"TCPIP0::{resource}::INSTR")
         self.inst.timeout = 5000
 
         self.mode = "V"
@@ -61,55 +61,50 @@ class RIGOL_DMM800:
             logger.warning(f"Failure with command -> {cmd}")
 
     # ---------------------------
-    # Configure Commands
+    # SCPI Commands
     # ---------------------------
 
-    def configure_voltage_dc(self, range, lim, resolution):
+    def _scpi_configure_voltage_dc(
+        self, 
+        range: Literal["100mV", "1V", "10V", "100V", "1000V", "AUTO"] = "AUTO", 
+        lim = "", 
+        resolution: Literal[1000, 100, 10] = 1000 
+    ) -> None:
         '''
         Presets the multimeter with the specified range and resolution for DC voltage measurement
         This function is mainly used for range and resolution... and lim is not used? 
         
-        <range>         100mV|1V|10V|100V|1000V|AUTO 
-        <lim>           MIN|MAX|DEF
-        <resolution>    1000|100|10 #FAST|MEDIUM|SLOW
+        range         100mV|1V|10V|100V|1000V|AUTO 
+        lim           MIN|MAX|DEF
+        resolution    1000|100|10 #FAST|MEDIUM|SLOW
         '''
 
-        cmd = f"CONFigure:VOLTage:DC {range},{resolution}"
-        try:
-            logger.info(f"Configuring DMM for DC voltage measurement")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Configure device for VDC")
 
-    # ---------------------------
-    # Data Commands
-    # ---------------------------
+        self.write(f"CONFigure:VOLTage:DC {range},{resolution}")
 
-    def initiate(self):
+    def _scpi_initiate(self) -> None:
         '''
         Initiate measurments, need to be done before a fetch
         '''
 
-        cmd = f"INITiate[:IMMediate]"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Initialte measurments")
 
-    def read(self):
+        self.write(f"INITiate[:IMMediate]")
+
+    def _scpi_read(self) -> float:
         '''
         Returns and clears all stored data
         '''
 
-        cmd = f"R?"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Read and Clear buffer")
 
-    def _parse_values(self, response):
+        return self.query(f"R?")
+        
+    def _parse_values(
+        self, 
+        response
+    ) -> float:
         if response is None:
             return []
 
@@ -129,7 +124,7 @@ class RIGOL_DMM800:
 
         return [float(v) for v in response.split(",") if v.strip()]
 
-    def fetch_single(self) -> float:
+    def _scpi_fetch_single(self) -> float:
         '''
         Compatibility wrapper for the OWON-style single-sample API.
         '''
@@ -149,78 +144,46 @@ class RIGOL_DMM800:
 
         return values[-1]
 
-    def fetch_storage(self, samples: int = 200):
+    def _scpi_fetch_storage(self) -> float:
         '''
-        Compatibility wrapper for the OWON-style buffered sampling API.
-        '''
-
-        try:
-            response = self.query(f"R? {samples}")
-        except Exception as exc:
-            logger.warning(f"Failure fetching buffered values: {exc}")
-            response = self.query("FETCh?")
-
-        values = self._parse_values(response)
-        if not values:
-            raise ValueError("No measurement values received from Rigol DMM")
-
-        if len(values) > samples:
-            return values[:samples]
-
-        return values
-
-    def fetch(self):
-        '''
-        Fetches all values from the measurement buffer and returns them as a list of floats.
-        '''
+        Fetch Storage of the last <samples> samples
         
-        try:
-            logger.info(f"Fetching all values from measurement buffer")
-            response = self.query("FETCh?")
-        except:
-            logger.warning(f"Failure with command -> FETCh?")
-            response = "" \
-            
-        print(response)
-            
-        for element in response:
-            print(element)
+        Args:
+            samples     Number of samples that should be fetched
+        '''
 
-        return [
-            float(v)
-            for v in response.split(",")
-            if v.strip()
-        ]
+        logger.info("Fetch storage")
 
-    def data_points(self):
+        return self.query(f"FETCh?")
+
+    def _scpip_data_points(self) -> int:
         '''
         Returns the number of data points currently stored in the measurement buffer.
         DM858 can store up to 500,000 readings while DM858E can store up to 20,000 readings
         '''
 
-        cmd = f"DATA:POINTS?"
-        try:
-            logger.info(f"Querying number of data points in measurement buffer")
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Querying number of data points in measurement buffer")
 
-    def data_remove(self, points):
+        return self.query(f"DATA:POINTS?")
+        
+    def _scpi_data_remove(
+        self, 
+        points: int = 200
+    ) -> None:
         '''
         Removes the specified number of data points from the measurement buffer.
 
-        <points>    DM858: 1 to 500000
+        points      DM858: 1 to 500000
                     DM858E: 1 to 20000
         '''
 
-        cmd = f"DATA:REMove? {points}"
-        try:
-            logger.info(f"Removing {points} data points from measurement buffer")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Removing {points} data points from measurement buffer")
 
-    def data_threshold(self, threshold):
+        return self.write(f"DATA:REMove? {points}")
+
+    def _scpi_data_threshold(self, 
+        threshold: int = 200
+    ) -> None:
         '''
         Sets the threshold for data storage in the measurement buffer.
         The total number of readings stored in the memory cannot exceed the threshold
@@ -230,23 +193,17 @@ class RIGOL_DMM800:
                        DM858E: 1 to 20000
         '''
 
-        cmd = f"DATA:POINts:EVENt:THReshold {threshold}"
-        try:
-            logger.info(f"Setting data storage threshold to {threshold}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting data storage threshold to {threshold}")
 
-    # ---------------------------
-    # Calculate Commands
-    # ---------------------------
-
-    def calculate_average_all(self):
+        return self.write(f"DATA:POINts:EVENt:THReshold {threshold}")
+    
+    def _scpi_calculate_average_all(self) -> list[float]:
         """
         Queries the average value, standard deviation, minimum value, and maximum value
         for the Statistics operation:
 
-        [average, std_dev, min, max]
+        Returns:
+            [average, std_dev, min, max]
         """
 
         cmd = "CALCulate:AVERage:ALL?"
@@ -271,64 +228,61 @@ class RIGOL_DMM800:
             logger.warning(f"Failure with command -> {cmd}")
             return None
 
-    def calculate_clear(self):
+    def _scpi_calculate_clear(self) -> None:
         '''
         Clears all limit values, histogram data, statistical information, and measurement results.
         '''
 
-        cmd = f"CALCulate:CLEar[:IMMediate]"
-        try:
-            logger.info(f"Clearing calculation data")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Clearing calculation data")
 
-    def calculate_average_count(self):
+        return self.write(f"CALCulate:CLEar[:IMMediate]")
+
+    def _scpi_calculate_average_count(self) -> int:
         '''
         Returns the number of samples used in the average calculation.
         '''
 
-        cmd = f"CALCulate:AVERage:COUNt?"
-        try:
-            logger.info(f"Querying number of samples used in average calculation") 
-            return self.query(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Querying number of samples used in average calculation") 
 
-    def calculate_average_state(self, state):
+        return self.query(cmd = f"CALCulate:AVERage:COUNt?")
+
+    def _scpi_calculate_average_state(
+        self, 
+        state: Literal["ON", "OFF"] = "OFF"
+    ) -> None:
         '''
         Enables or disables the average calculation.
         This command won't work in AUTO mode.
 
-        <state>    ON|OFF
+        Args:
+            state:    ON|OFF
         '''
 
-        cmd = f"CALCulate:AVERage:STATe {state}"
-        try:
-            logger.info(f"Setting average calculation state to {state}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting average calculation state to {state}")
 
-    # ---------------------------
-    # Screenshot Command
-    # ---------------------------
-
-    def hcopy_sdump_data_format(self, format):
+        return self.write(f"CALCulate:AVERage:STATe {state}")
+    
+    def _scpi_hcopy_sdump_data_format(
+        self, 
+        format: Literal["BMP", "PNG"] = "PNG"
+    ) -> None:
         '''
         Sets the format for the hardcopy dump data.
 
-        <format>    BMP|PNG
+        Args:
+            format: BMP|PNG
         '''
 
-        cmd = f"HCOPy:SDUMp:DATA:FORMat {format}"
-        try:
-            logger.info(f"Setting screenshot data format to {format}")
-            return self.write(cmd)
-        except:
-            logger.warning(f"Failure with command -> {cmd}")
+        logger.info(f"Setting screenshot data format to {format}")
 
-    def hcopy_sdump_data_dump(self, filename=None, folder=None, timestamp=None, format="PNG"):
+        return self.write(f"HCOPy:SDUMp:DATA:FORMat {format}")
+
+    def _scpi_hcopy_sdump_data_dump(
+        self, 
+        filename=None, 
+        folder=None, 
+        timestamp=None, 
+        format="PNG"):
         '''
         Saves a screenshot of the current display to a file.
         '''
@@ -426,7 +380,6 @@ class RIGOL_DMM800:
 
         logger.info(f"Auto-selected range: {range_val}")
 
-
         numeric_range = {
             "100mV": 0.1,
             "1V": 1,
@@ -480,8 +433,6 @@ class RIGOL_DMM800:
         )
 
         self.calculate_average_state("OFF")
-
-
 
     def measure_and_plot_voltage(
         self,
@@ -613,102 +564,110 @@ class RIGOL_DMM800:
         )
     
     def setup(
-            self,
-            mode: str = "V",
-            range: float = 230,
-            speed: str = "HIGH",
-        ) -> None:
-            """
-            Configure the Rigol DMM.
+        self,
+        mode: Literal["V", "A"] = "V",
+        range: float = 0,
+        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
+    ) -> None:
+        """
+        Configure the Rigol DMM.
 
-            Args:
-                mode:   V or A
-                range:  Expected maximum measurement value
-                speed:  LOW, MID or HIGH
-            """
+        Args:
+            mode:   V or A
+            range:  Expected maximum measurement value
+            speed:  LOW, MID or HIGH
+        """
 
-            mode = mode.upper()
-            speed = speed.upper()
+        mode = mode.upper()
+        speed = speed.upper()
 
-            speed_map = {
-                "LOW": "SLOW",
-                "MID": "MEDIUM",
-                "HIGH": "FAST",
-            }
+        speed_map = {
+            "LOW": "SLOW",
+            "MID": "MEDIUM",
+            "HIGH": "FAST",
+        }
 
-            if speed not in speed_map:
-                raise ValueError(
-                    f"Unsupported speed '{speed}'. "
-                    "Use LOW, MID or HIGH."
-                )
-
-            rigol_speed = speed_map[speed]
-
-            if mode == "V":
-
-                range_val = self.get_voltage_range(range)
-
-                numeric_range = {
-                    "100mV": 0.1,
-                    "1V": 1,
-                    "10V": 10,
-                    "100V": 100,
-                    "1000V": 1000,
-                }[range_val]
-
-                resolution = (
-                    numeric_range *
-                    ppm_map[rigol_speed]
-                )
-
-                self.configure_voltage_dc(
-                    range_val,
-                    "DEF",
-                    f"{resolution:.6E}"
-                )
-
-            elif mode == "A":
-
-                logger.warning(
-                    "Current mode setup not yet implemented."
-                )
-
-            else:
-                raise ValueError(
-                    f"Unsupported mode '{mode}'. "
-                    "Use V or A."
-                )
-
-            self.mode = mode
-            self.range = range
-            self.speed = speed
-
-            logger.info(
-                f"DMM configured: "
-                f"mode={mode}, "
-                f"range={range}, "
-                f"speed={speed}"
+        if speed not in speed_map:
+            raise ValueError(
+                f"Unsupported speed '{speed}'. "
+                "Use LOW, MID or HIGH."
             )
 
-    def set_display(self) -> None:
+        rigol_speed = speed_map[speed]
+
+        if mode == "V":
+
+            range_val = self.get_voltage_range(range)
+
+            numeric_range = {
+                "100mV": 0.1,
+                "1V": 1,
+                "10V": 10,
+                "100V": 100,
+                "1000V": 1000,
+            }[range_val]
+
+            resolution = (
+                numeric_range *
+                ppm_map[rigol_speed]
+            )
+
+            self.configure_voltage_dc(
+                range_val,
+                "DEF",
+                f"{resolution:.6E}"
+            )
+
+        elif mode == "A":
+
+            logger.warning(
+                "Current mode setup not yet implemented."
+            )
+
+        else:
+            raise ValueError(
+                f"Unsupported mode '{mode}'. "
+                "Use V or A."
+            )
+
+        self.mode = mode
+        self.range = range
+        self.speed = speed
+
+        logger.info(
+            f"DMM configured: "
+            f"mode={mode}, "
+            f"range={range}, "
+            f"speed={speed}"
+        )
+
+    def set_display(
+        self,
+        scenario: Literal["STAT"]
+    ) -> None:
         """
-        Compatibility wrapper for the OWON display-control API.
+        Enables verious scenarious
+
+        Args:
+            scenario:   STAT    sets the display to a statistic mode
         """
+        
         logger.info("Rigol DMM display control is not exposed via this adapter")
 
-    def get_screenshot(
+    def save_screenshot(
         self,
-        folder: str = "measurements",
-        prefix: str = "",
-        label: str = "",
-    ):
+        filename: str = "TEMP"
+    ) -> None:
         """
-        Compatibility wrapper for the OWON screenshot API.
+        Retrieves a screenshot.
+
+        Args:
+            <filename>     Label for the measured signal
         """
-        filename = prefix or label or "DMM"
+
         return self.hcopy_sdump_data_dump(
             filename=filename,
-            folder=folder,
+            folder="measurment",
             format="PNG",
         )
 
@@ -716,23 +675,30 @@ class RIGOL_DMM800:
         self,
         title: str,
         y_label: str,
-        suffix: str = "",
+        filename: str,
         nominal_value: float = 0.0,
         min_limit: float = 0.0,
         max_limit: float = 0.0,
         limit: int = 200,
-    ):
+    ) -> None:
         """
-        Compatibility wrapper for OWON API.
-        """
+        Creates a plot from stored measurements.
 
-        timestamp = (
-            suffix
-            if suffix
-            else datetime.datetime.now().strftime(
-                "%Y%m%d_%H%M%S"
-            )
-        )
+        Args:
+            <title>             Title of the plot
+
+            <y_label>           y label...
+
+            <filename>          suffix for the filename
+
+            <nominal_value>     Nominal value, will be displayed as center line
+
+            <min_limit>         Minimal limit
+
+            <max_limit>         Maximal limit
+
+            <limit>             Limit to use for the fetch_storage function
+        """
 
         try:
             values = self.fetch_storage(samples=limit)
@@ -752,9 +718,49 @@ class RIGOL_DMM800:
             y_data=values,
             title=title,
             y_label=y_label,
-            suffix=timestamp,
+            filename=filename,
             unit=self.mode,
             nominal_value=nominal_value,
             min_limit=min_limit,
             max_limit=max_limit,
         )
+    
+    def fetch_single(
+        self
+    ) -> float:
+        """
+        Gets the current measurement value.
+
+        Returns:
+            Returns the current value
+        """   
+
+        return self._scpi_read()
+    
+    def fetch_storage(
+        self,
+        samples: int = 200,
+    ) -> list[float]:
+        """
+        Gets multiple measurement values.
+
+        Args:
+            samples:    Store for a number of samples before returning
+
+        Returns:
+            List of measured values.
+        """
+
+        self._scpi_data_remove(
+            points=500000
+        )
+
+        while True:
+            if self._scpip_data_points() < samples:
+                time.sleep(0.1)
+            else:
+                break
+
+        values = self._scpi_read()
+
+        return values[-samples:]
