@@ -6,6 +6,8 @@ from typing import Optional, List
 import re
 import matplotlib.pyplot as plt
 from loguru import logger
+from pathlib import Path
+import subprocess
 
 def to_float(value: str) -> float:
     """Extract and convert numeric value from string.
@@ -312,3 +314,21 @@ def plot_data(
     plt.close(fig)
 
     return path
+
+def open_measurements_folder(
+    folder: str = "measurments"
+) -> None:
+    """
+    Opens Folder
+
+    Args:
+        <folder>    Folder to open
+    """
+
+    MEASUREMENTS_DIR = Path(folder)
+
+    MEASUREMENTS_DIR.mkdir(exist_ok=True)
+
+    subprocess.Popen(
+        ["explorer", str(MEASUREMENTS_DIR.resolve())]
+    )

@@ -337,6 +337,8 @@ def build_power_supply_widget():
                 """
             )
 
+            apply_values()
+            
             connect_button.update()
 
             ui.notify(

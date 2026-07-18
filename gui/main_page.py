@@ -7,9 +7,9 @@ from gui.pages.load_test import build_load_test_page
 from gui.pages.get_plot import build_get_plot_page
 from gui.pages.configuration import build_configuration_page
 from gui.widgets.power_supply_widget import build_power_supply_widget
+from utils.utils import open_measurements_folder
 
 def build_main_page():
-
 
     # ---------------------------
     # Header
@@ -66,6 +66,14 @@ def build_main_page():
         with ui.card().style('width:250px; min-height:600px;'):
 
             ui.label('Navigation').classes('text-h6')
+
+
+            ui.button(
+                text="Open Measurements",
+                icon="folder_open",
+                on_click=open_measurements_folder,
+                color=colors.ORANGE,
+            )
 
             nav_scope = ui.button(
                 text = 'Scope Screenshot',
