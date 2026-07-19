@@ -328,6 +328,8 @@ def build_power_supply_widget():
             except Exception:
                 pass
 
+            ps.power_on_off("OFF")
+
             connect_button.set_text("CONNECTED")
 
             connect_button.style(
