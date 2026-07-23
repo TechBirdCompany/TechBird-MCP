@@ -60,3 +60,12 @@ class powersupply(Protocol):
             <lock_enable>   TRUE|FALSE
         """
         ...
+
+    def get_state(self) -> Literal["ON", "OFF"]:
+        """
+        Gets state of PSU
+
+        Returns:
+            ON|OFF
+        """
+        ...
