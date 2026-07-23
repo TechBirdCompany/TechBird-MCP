@@ -26,6 +26,9 @@ class PEAKTECH_6070:
             write_timeout=timeout,
         )
 
+        self._voltage = 0
+        self._current = 0
+
     # ------------------------------------------------------
     # CRC16 MODBUS
     # ------------------------------------------------------
@@ -150,10 +153,12 @@ class PEAKTECH_6070:
 
         rx = self._send_frame(payload)
 
+        #logger.warning(rx.hex(" "))
+
         if len(rx) < 14:
             return None
 
-        status = (rx[5] << 8) | rx[6]
+        status = (rx[5] & 0x20)
         voltage = (rx[7] << 8) | rx[8]
         current = (rx[9] << 8) | rx[10]
 
@@ -208,7 +213,7 @@ class PEAKTECH_6070:
             register=0x1E,
             value=1 if enable else 0
         )
-
+    
     # ------------------------------------------------------
     # Public API
     # ------------------------------------------------------
@@ -237,6 +242,9 @@ class PEAKTECH_6070:
             <voltage>
             <current>
         """
+
+        self._voltage = voltage
+        self._current = current
 
         self._scpi_set_voltage(voltage)
         self._scpi_set_current(current)
@@ -287,3 +295,17 @@ class PEAKTECH_6070:
         """
 
         logger.warning(f"Function not supported")
+        
+    def get_state(
+        self
+    ) -> Literal["ON", "OFF"]:
+        """
+        Gets state of PSU
+
+        Returns:
+            ON|OFF
+        """
+
+        status, _, _ = self._read_all()
+
+        return "ON" if status else "OFF"
