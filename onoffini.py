@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from typing import Literal
 
 from loguru import logger
@@ -52,6 +52,7 @@ def onoffini(
 
 
 def main() -> None:
+
     parser = ArgumentParser(
         prog="onoffini",
         description="Control a PeakTech 1885 power supply from the command line.",
@@ -60,9 +61,7 @@ def main() -> None:
             "  python onoffini.py --voltage 24 --current 5 --state ON\n"
             "  python onoffini.py --voltage 24 --current 5 --state OFF"
         ),
-        formatter_class=lambda prog: ArgumentParser(
-            prog=prog
-        ).formatter_class,
+        formatter_class=RawTextHelpFormatter,
     )
 
     parser.add_argument(
