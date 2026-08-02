@@ -6,6 +6,7 @@ from devices.scope.rigol_mso1000.rigol_mso1000 import RIGOL_MSO1000
 from devices.dmm.dmm_protocol import dmm
 from devices.dmm.owon_xdm1000.owon_xdm_1000 import OWON_XDM1000
 from devices.dmm.rigol_dmm800.rigol_dmm800 import RIGOL_DMM800
+from devices.dmm.hantek_hdm3000.hantek_hdm3000 import HANTEK_HDM3000
 
 from devices.electronic_load.eload_protocol import eload
 from devices.electronic_load.easttester_et54.easttester_et54 import EASTTESTER_ET54
@@ -43,6 +44,11 @@ DEVICE_INFO = {
     "RIGOL_DMM800": {
         "protocol": dmm,
         "class": RIGOL_DMM800,
+    },
+
+    "HANTEK_HDM3000": {
+        "protocol": dmm,
+        "class": HANTEK_HDM3000,
     },
 
     # ELOAD
