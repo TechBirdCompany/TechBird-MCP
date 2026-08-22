@@ -316,7 +316,7 @@ def plot_data(
     return path
 
 def open_measurements_folder(
-    folder: str = "measurments"
+    folder: str = "measurements"
 ) -> None:
     """
     Opens Folder

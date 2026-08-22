@@ -21,9 +21,10 @@ devices:
       resource: AUTO
     PEAKTECH_6070:
       resource: AUTO
-    KORAD_KD3000
+    KORAD_KD3000:
       resource: AUTO
 selected:
   scope: SIGLENT_SDS2000
   dmm: OWON_XDM1000
   eload: EASTTESTER_ET54
+  powersupply: PEAKTECH_6070

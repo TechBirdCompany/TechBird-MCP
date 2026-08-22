@@ -25,6 +25,8 @@ class PEAKTECH_1885:
             write_timeout=timeout,
         )
 
+        self._voltage = 0
+        self._current = 0
 
     @classmethod
     def auto_connect(cls) -> "PEAKTECH_1885":
@@ -202,6 +204,19 @@ class PEAKTECH_1885:
             arg = int(disable)
         )
 
+    def _scpi_gpal(self) -> str:
+        """
+        Get LCD display information.
+
+        Returns:
+            Raw GPAL response.
+        """
+        command = f"GPAL {self._address:02d}\r"
+
+        self._write(command.encode())
+
+        return self._read().decode().strip()
+
     # -----------------------------------------
     # API Commands
     # -----------------------------------------
@@ -246,6 +261,9 @@ class PEAKTECH_1885:
             <current>
         """
 
+        self._voltage = voltage
+        self._current = current
+
         self._scpi_set_voltage(voltage)
         self._scpi_set_current(current)
 
@@ -277,3 +295,25 @@ class PEAKTECH_1885:
             self._scpi_remote_on()
         else:
             self._scpi_remote_off()
+
+    def get_state(
+        self
+    ) -> Literal["ON", "OFF"]:
+        """
+        Gets state of PSU
+
+        Returns:
+            ON|OFF
+        """
+
+        response = self._scpi_gpal()
+
+        if "Output on" in response:
+            return "ON"
+
+        if "Output off" in response:
+            return "OFF"
+
+        raise RuntimeError(
+            "Could not determine PSU state"
+        )

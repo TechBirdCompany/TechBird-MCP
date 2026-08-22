@@ -39,7 +39,7 @@ def get_screenshot_scope(
         )
 
     path = device.save_screenshot(
-        filename=f"{filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}"
+        filename=f"{filename}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
 
     return path
@@ -91,7 +91,7 @@ def get_plot_dmm(
     """
 
     path = device.get_plot(
-        filename=f"{filename}_{datetime.now().strftime("%Y%m%d_%H%M%S")}",
+        filename=f"{filename}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         title=title,
         y_label=y_label,
         nominal_value=nominal_value,

@@ -79,7 +79,6 @@ def build_scope_screenshot_page():
 
         try:
 
-            # aktuelle Werte sichern
             persist()
 
             cfg = load_config()
@@ -112,6 +111,14 @@ def build_scope_screenshot_page():
                 str(e),
                 type="negative"
             )
+
+    def remove_labels():
+        scope = create_device(
+            get_selected_device_config("scope")
+        )
+
+        for i in range(4):
+            scope.set_label(i + 1, "")
 
     with ui.row().classes("w-full").style("align-items:flex-start"):
 
@@ -164,6 +171,14 @@ def build_scope_screenshot_page():
                 )
                 .classes("w-full")
                 .on("change", lambda e: persist())
+            )
+
+            ui.button(
+                text = "Remove Labels",
+                on_click = remove_labels,
+                color = colors.ORANGE
+            ).classes(
+                "w-full"
             )
 
             ui.button(

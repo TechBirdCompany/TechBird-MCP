@@ -164,7 +164,7 @@ class RIGOL_DMM800:
 
         logger.info(f"Querying number of data points in measurement buffer")
 
-        return self.query(f"DATA:POINTS?")
+        return int(self.query(f"DATA:POINTS?"))
         
     def _scpi_data_remove(
         self, 
@@ -761,6 +761,9 @@ class RIGOL_DMM800:
             else:
                 break
 
-        values = self._scpi_read()
+        raw = self._scpi_read()
+        logger.info(f"RAW DATA: {raw[:500]}")
+
+        values = self._parse_values(raw)
 
         return values[-samples:]

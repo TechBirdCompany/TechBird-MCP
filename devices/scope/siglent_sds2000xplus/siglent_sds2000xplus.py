@@ -33,7 +33,6 @@ class SIGLENT_SDS2000:
             logger.warning(f"Failure with command -> {cmd}")
 
     def close(self):
-        cmd = "CLOSE"
         try:
             self.inst.close()
         except:
@@ -98,7 +97,7 @@ class SIGLENT_SDS2000:
 
     def _scpi_save_screenshot(self, 
         filename:str, 
-    ) -> None:
+    ) -> str:
         """
         Saves screenshot
         
@@ -110,8 +109,7 @@ class SIGLENT_SDS2000:
     
         os.makedirs("measurements", exist_ok=True)
 
-        path = Path("measurements") / filename
-        path = path.with_suffix(".png")
+        path = Path("measurements") / f"{filename}.png"
 
         self.inst.chunk_size = 20 * 1024 * 1024
 
@@ -122,7 +120,7 @@ class SIGLENT_SDS2000:
         with open(path, "wb") as f:
             f.write(data)
 
-        return path
+        return str(path)
 
     def _scpi_identify(self) -> str:
         """
@@ -633,7 +631,7 @@ class SIGLENT_SDS2000:
 
             self._scpi_measure_on_off(
                 position=position,
-                channel = "OFF"
+                state = "OFF"
             )
             
             self._scpi_measure_statistics_on_off(

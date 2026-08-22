@@ -25,6 +25,9 @@ class KORAD_KA3010DS:
             write_timeout=timeout,
         )
 
+        self._voltage = 0
+        self._current = 0
+
     # --------------------------------------------------
     # Connection Handling
     # --------------------------------------------------
@@ -138,6 +141,8 @@ class KORAD_KA3010DS:
             f"Set voltage to: {voltage:.2f} V"
         )
 
+        self._voltage = voltage
+
         self.write(
             f"VSET1:{voltage:.2f}"
         )
@@ -150,6 +155,8 @@ class KORAD_KA3010DS:
         logger.info(
             f"Set current to: {current:.3f} A"
         )
+
+        self._current = current
 
         self.write(
             f"ISET1:{current:.3f}"
@@ -217,6 +224,11 @@ class KORAD_KA3010DS:
         return self.query(
             "STATUS?"
         )
+    
+    def _scpi_status(
+        self
+    ) -> int:
+        return ord(self._query("STATUS?"))
 
     # --------------------------------------------------
     # API Commands
@@ -289,3 +301,20 @@ class KORAD_KA3010DS:
         logger.warning(
             "Front panel lock not implemented for Korad"
         )
+
+    def get_state(
+        self
+    ) -> Literal["ON", "OFF"]:
+        """
+        Gets state of PSU
+
+        Returns:
+            ON|OFF
+        """
+
+        status = self._scpi_status()
+
+        if status & (1 << 6):
+            return "ON"
+
+        return "OFF"

@@ -13,7 +13,6 @@ from gui.config import (
 
 from tools.test_load import test_load
 
-
 CONFIG_FILE = (
     Path(__file__).resolve().parents[2]
     / "config"
@@ -29,7 +28,6 @@ DEFAULT_CONFIG = {
     "samples": 200,
     "single": False,
 }
-
 
 def load_page_config():
     if not CONFIG_FILE.exists():
@@ -49,7 +47,6 @@ def load_page_config():
         logger.exception(e)
         return DEFAULT_CONFIG.copy()
 
-
 def save_page_config(config):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         yaml.safe_dump(
@@ -59,13 +56,15 @@ def save_page_config(config):
             allow_unicode=True,
         )
 
-
 def build_load_test_page():
 
     page_cfg = load_page_config()
 
     test_results = []
     last_result_count = 0
+
+    test_finished = False
+    test_error = None
 
     gallery = None
     dialog = None
@@ -127,6 +126,26 @@ def build_load_test_page():
 
         nonlocal test_results
         nonlocal last_result_count
+        nonlocal test_finished
+        nonlocal test_error
+
+        if test_finished:
+
+            ui.notify(
+                "Load Test completed",
+                type="positive"
+            )
+
+            test_finished = False
+
+        if test_error:
+
+            ui.notify(
+                test_error,
+                type="negative"
+            )
+
+            test_error = None
 
         if not test_results:
             return
@@ -141,13 +160,18 @@ def build_load_test_page():
     def run_load_test():
 
         nonlocal test_results
+        nonlocal last_result_count
+        nonlocal test_finished
+        nonlocal test_error
+
+        test_results = []
+        last_result_count = 0
+        test_finished = False
+        test_error = None
 
         try:
 
-            # aktuelle Einstellungen sichern
             persist()
-
-            cfg = load_config()
 
             scope = create_device(
                 get_selected_device_config("scope")
@@ -176,19 +200,13 @@ def build_load_test_page():
 
             logger.info("Load Test completed")
 
-            ui.notify(
-                "Load Test completed",
-                type="positive"
-            )
+            test_finished = True
 
         except Exception as e:
 
             logger.exception(e)
 
-            ui.notify(
-                str(e),
-                type="negative"
-            )
+            test_error = str(e)
 
     with ui.row().classes("w-full").style("align-items:flex-start"):
 
@@ -281,8 +299,8 @@ def build_load_test_page():
 
                 preview = ui.image().style(
                     """
-                    max-width:95vw;
-                    max-height:95vh;
+                    max-width:80vw;
+                    max-height:80vh;
                     object-fit:contain;
                     """
                 )

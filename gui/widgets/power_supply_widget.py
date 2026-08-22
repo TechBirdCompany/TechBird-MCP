@@ -323,10 +323,14 @@ def build_power_supply_widget():
 
             ps = create_device(device_cfg)
 
+            """
             try:
                 ps.lock(True)
             except Exception:
                 pass
+            """
+            
+            ps.power_on_off("OFF")
 
             connect_button.set_text("CONNECTED")
 
@@ -452,8 +456,6 @@ def build_power_supply_widget():
 
     def power_changed():
 
-        nonlocal power_state
-
         if ps is None:
 
             ui.notify(
@@ -465,35 +467,10 @@ def build_power_supply_widget():
 
         try:
 
-            power_state = not power_state
-
-            if power_state:
-
-                ps.power_on_off("ON")
-
-                power_button.set_text("ON")
-
-                power_button.style(
-                    f"""
-                    background: {colors.GREEN};
-                    color: white
-                    """
-                )  
-
-            else:
-
+            if power_button.text == "ON":
                 ps.power_on_off("OFF")
-
-                power_button.set_text("OFF")
-
-                power_button.style(
-                    f"""
-                    background: {colors.RED};
-                    color: white
-                    """
-                )
-
-            power_button.update()
+            else:
+                ps.power_on_off("ON")
 
         except Exception as ex:
 
@@ -501,6 +478,38 @@ def build_power_supply_widget():
                 str(ex),
                 type="negative",
             )
+
+    def update_power_button(voltage: float):
+
+        target_voltage = float(vset.value)
+
+        tolerance = target_voltage * 0.03  # 3 %
+
+        is_on = abs(voltage - target_voltage) <= tolerance
+
+        if is_on:
+  
+            power_button.set_text("ON")
+
+            power_button.style(
+                f"""
+                background: {colors.GREEN};
+                color: white;
+                """
+            )
+
+        else:
+
+            power_button.set_text("OFF")
+
+            power_button.style(
+                f"""
+                background: {colors.RED};
+                color: white;
+                """
+            )
+
+        power_button.update()
 
     apply_button.on(
         "click",
@@ -531,6 +540,8 @@ def build_power_supply_widget():
         try:
 
             voltage, current = (ps.get_value())
+
+            update_power_button(voltage)
 
             power = (voltage * current)
 
@@ -563,6 +574,6 @@ def build_power_supply_widget():
             disconnect()
 
     ui.timer(
-        0.1,
+        0.05,
         update,
     )
