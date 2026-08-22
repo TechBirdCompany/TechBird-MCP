@@ -47,6 +47,7 @@ config/scope_screenshot.yaml
 config/devices.yaml
 
 # ---------------------------
-# Configs
+# Misc
 # ---------------------------
-test.py
+test*
+tmp*
