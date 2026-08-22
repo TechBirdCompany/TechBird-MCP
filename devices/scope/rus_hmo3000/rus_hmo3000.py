@@ -714,41 +714,44 @@ class RUS_HMO3000:
             String to saved file
         """
 
-        logger.debug(
-            "Saving screenshot"
-        )
+        logger.debug("Saving screenshot")
+
+        file_path = Path("measurements") / f"{filename}.bmp"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             self._scpi_stop()
             time.sleep(0.5)
 
+            # Increase the VISA timeout for a large binary screenshot transfer.
+            old_timeout = self.inst.timeout
+            self.inst.timeout = 120000  # 120 seconds
+
             result = self.inst.query_binary_values(
                 "HCOPy:DATA?",
                 datatype="B",
-                container=bytearray
+                container=bytearray,
+                expect_termination=False,
+                is_big_endian=False,
             )
 
-            logger.debug(
-                f"Received {len(result)} bytes from oscilloscope"
-            )
+            self.inst.timeout = old_timeout
 
-            file_path = Path(
-                "measurements"
-            ) / f"{filename}.bmp"
+            if not result:
+                raise RuntimeError("No screenshot bytes returned from oscilloscope")
 
             with open(file_path, "wb") as fp:
                 fp.write(result)
 
-            logger.debug(
-                f"Screenshot saved to {file_path}"
-            )
+            resolved_path = file_path.resolve()
+            logger.debug(f"Screenshot saved to {resolved_path}")
+            return str(resolved_path)
 
         except Exception as ex:
-            logger.exception(
-                f"Failed to save screenshot: {ex}"
-            )
-
-            return str(file_path.resolve())
+            logger.exception(f"Failed to save screenshot: {ex}")
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+            return ""
 
     def persistence_clear(self) -> None:
         self.persistence_clear()
