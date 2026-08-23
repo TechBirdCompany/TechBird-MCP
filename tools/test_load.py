@@ -18,32 +18,35 @@ def test_load(
     domain: str,
     current: float,
     samples: int = 200,
-    single: bool = False
+    single: bool = False,
+    current_probe_attenuation: float = 10
 ) -> str:
     """
     Measures the domain in idle and with mid and high load
 
     Args:
-        <scope>             Scope
+        <scope>                         Scope
 
-        <dmm>               DMM
+        <dmm>                           DMM
 
-        <eload>             E Load
+        <eload>                         E Load
 
-        <voltage>           Voltage value which is expected
+        <voltage>                       Voltage value which is expected
 
-        <max_voltage>       Max voltage of <voltage>
+        <max_voltage>                   Max voltage of <voltage>
 
-        <min_voltage>       Min voltage of <voltage>
+        <min_voltage>                   Min voltage of <voltage>
 
-        <domain>            Domain name of <voltage>
+        <domain>                        Domain name of <voltage>
 
-        <current>           Maximum current which should be available
-                            If <single> is true, it will measure only this current
+        <current>                       Maximum current which should be available
+                                        If <single> is true, it will measure only this current
 
-        <samples>           Number of samples which should be captured
+        <samples>                       Number of samples which should be captured
 
-        <single>            Single measurment or with idle, half and full current
+        <single>                        Single measurment or with idle, half and full current
+
+        <current_probe_attenuation>     Attenuation of the current probe
     """
 
     created_files = []
@@ -107,7 +110,7 @@ def test_load(
             enable="ON",
             attenuation=10,
             unit="V",
-            label=f"{domain} @ {test_current}A",
+            label=f"{domain}@{test_current}A",
             coupling="DC",
             bandwidth_limit="20MHz",
             volts_per_div=calc_scale(voltage),
@@ -117,9 +120,9 @@ def test_load(
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
             enable="ON",
-            attenuation=10,
+            attenuation=current_probe_attenuation,
             unit="A",
-            label=f"{domain} @ {test_current}A",
+            label=f"{domain}@{test_current}A",
             coupling="DC",
             bandwidth_limit="20MHz",
             volts_per_div=calc_scale(current),
@@ -225,7 +228,7 @@ def test_load(
         scope.set_channel(  # Set channel 2 of scope
             channel=2,
             enable="ON",
-            attenuation=10,
+            attenuation=current_probe_attenuation,
             unit="A",
             label=f"{domain} @ {test_current}A",
             coupling="DC",
