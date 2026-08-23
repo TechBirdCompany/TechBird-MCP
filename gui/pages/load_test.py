@@ -27,6 +27,7 @@ DEFAULT_CONFIG = {
     "current": 0.5,
     "samples": 200,
     "single": False,
+    "current_probe_attenuation": 10
 }
 
 def load_page_config():
@@ -79,6 +80,7 @@ def build_load_test_page():
             "current": float(current.value),
             "samples": int(samples.value),
             "single": bool(single.value),
+            "current_probe_attenuation": float(current_probe_attenuation.value)
         }
 
     def persist():
@@ -196,6 +198,7 @@ def build_load_test_page():
                 current=float(current.value),
                 samples=int(samples.value),
                 single=single.value,
+                current_probe_attenuation=float(current_probe_attenuation.value)
             )
 
             logger.info("Load Test completed")
@@ -263,6 +266,15 @@ def build_load_test_page():
                 ui.number(
                     "Samples",
                     value=page_cfg["samples"]
+                )
+                .classes("w-full")
+                .on("change", lambda e: persist())
+            )
+
+            current_probe_attenuation = (
+                ui.number(
+                    "Current Probe Attenuation",
+                    value=page_cfg["current_probe_attenuation"]
                 )
                 .classes("w-full")
                 .on("change", lambda e: persist())
