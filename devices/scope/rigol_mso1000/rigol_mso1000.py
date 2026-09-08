@@ -163,7 +163,7 @@ class RIGOL_MSO1000:
             <mode>  NORMal|AVERages|PEAK|HRESolution
         """
 
-        logger.inf(f"Set scope to acquire mode {mode}")
+        logger.info(f"Set scope to acquire mode {mode}")
 
         self.write(f":ACQuire:TYPE {mode}")
 
@@ -626,13 +626,13 @@ class RIGOL_MSO1000:
         bit: Literal[8, 16] = 16
     ) -> None:
         
-        if bin == 8:
+        if bit == 8:
             self._scpi_acquire_type(
                 mode="NORMal"
             )
         else:
             self._scpi_acquire_type(
-                model="HRESolution"
+                mode="HRESolution"
             )
 
     def set_channel(
