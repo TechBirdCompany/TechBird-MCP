@@ -229,3 +229,11 @@ class scope(Protocol):
             <label>     Label for channel
         """
         ...
+
+    def clear_measurements(
+        self
+    ) -> None:
+        """
+        Clears all measurements.
+        """
+        ...

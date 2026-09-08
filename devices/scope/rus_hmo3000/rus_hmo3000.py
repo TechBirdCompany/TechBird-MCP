@@ -800,3 +800,15 @@ class RUS_HMO3000:
                 channel=channel,
                 label=label
             )
+
+    def clear_measurements(
+        self
+    ) -> None:
+        """
+        Clears all measurements.
+        """
+        for i in range(1, 6):
+            
+            self._scpi_measure_statistics_reset(
+                position=i
+            )

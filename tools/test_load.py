@@ -89,7 +89,7 @@ def test_load(
         dmm.setup(  # Setup DMM
             mode="V",
             range=max_voltage,
-            speed="FAST",
+            speed="MID",
         )
 
         scope.stop()    # Stop scope
@@ -165,6 +165,8 @@ def test_load(
         eload.load_on() # Enable eload
 
         scope.run() # Set scope in run mode
+
+        scope.clear_measurements() # Clear all measurements
 
         last_count = None
 
@@ -276,9 +278,9 @@ def test_load(
 
         time.sleep(10) # Wait for persistance to build up
 
-        #scope.run() # Set Scope to run mode
-
         scope.persistence_clear() # Clear persistance traces
+
+        scope.clear_measurements() # Clear all measurements
 
         last_count = None
 
