@@ -12,7 +12,7 @@ from typing import Literal
 
 ppm_map = {
     "FAST": 1000e-6,
-    "MEDIUM": 100e-6,
+    "MID": 100e-6,
     "SLOW": 10e-6
 }
 
@@ -32,7 +32,7 @@ class RIGOL_DMM800:
 
         self.mode = "V"
         self.range = 1000
-        self.speed = "MEDIUM"
+        self.speed = "FAST"
 
     # ---------------------------
     # Basic Commands
@@ -76,7 +76,7 @@ class RIGOL_DMM800:
         
         range         100mV|1V|10V|100V|1000V|AUTO 
         lim           MIN|MAX|DEF
-        resolution    1000|100|10 #FAST|MEDIUM|SLOW
+        resolution    1000|100|10 #HIGH|MEDIUM|SLOW
         '''
 
         logger.info(f"Configure device for VDC")
@@ -287,7 +287,7 @@ class RIGOL_DMM800:
         Saves a screenshot of the current display to a file.
         '''
 
-        self.hcopy_sdump_data_format(format)
+        self._scpi_hcopy_sdump_data_format(format)
 
         cmd = f"HCOPy:SDUMp:DATA?"  
         logger.info(f"Saving screenshot from Rigol DM858 -> {cmd}")
@@ -358,7 +358,7 @@ class RIGOL_DMM800:
     self,
     voltage,
     min_samples,
-    mode="MEDIUM",
+    mode="MID",
     folder="measurements",
     filename="DMM"
     ):
@@ -368,7 +368,7 @@ class RIGOL_DMM800:
 
         <voltage>      expected voltage value (used to set range)
         <min_samples>  minimum number of samples before screenshot
-        <mode>         FAST | MEDIUM | SLOW
+        <mode>         FAST | MID | SLOW
         <folder>       folder to save the screenshot
         <filename>     optional filename prefix for the screenshot
         """
@@ -390,26 +390,26 @@ class RIGOL_DMM800:
 
         if mode.upper() not in ppm_map:
             raise ValueError(
-                f"Invalid mode '{mode}'. Use FAST, MEDIUM or SLOW."
+                f"Invalid mode '{mode}'. Use FAST, MID or SLOW."
             )
         
         resolution = numeric_range * ppm_map[mode.upper()]
 
-        self.configure_voltage_dc(
+        self._scpi_configure_voltage_dc(
             range_val,
             "DEF",
             f"{resolution:.6E}"
         )
 
-        self.calculate_clear()
+        self._scpi_calculate_clear()
 
-        self.calculate_average_state("ON")
+        self._scpi_calculate_average_state("ON")
 
         logger.info(f"Waiting for at least {min_samples} samples...")
 
         while True:
             try:
-                count = int(self.calculate_average_count())
+                count = int(self._scpi_calculate_average_count())
             except:
                 count = 0
 
@@ -426,13 +426,13 @@ class RIGOL_DMM800:
 
         logger.info("Minimum sample count reached.")
 
-        self.hcopy_sdump_data_dump(
+        self._scpi_hcopy_sdump_data_dump(
             filename=filename,
             folder=folder,
             format="PNG"
         )
 
-        self.calculate_average_state("OFF")
+        self._scpi_calculate_average_state("OFF")
 
     def measure_and_plot_voltage(
         self,
@@ -441,7 +441,7 @@ class RIGOL_DMM800:
         voltage_min,
         voltage_max,
         min_samples,
-        mode="MEDIUM",
+        mode="MID",
         folder="plots",
         filename="DMM",
         timeout_sec=30
@@ -463,35 +463,35 @@ class RIGOL_DMM800:
 
         logger.info(f"Auto-selected range: {range_val}")
 
-        self.configure_voltage_dc(
+        self._scpi_configure_voltage_dc(
             range_val,
             "DEF",
             f"{resolution:.6E}"
         )
 
-        self.calculate_clear()
+        self._scpi_calculate_clear()
 
         try:
-            points = int(self.data_points())
+            points = int(self._scpip_data_points())
 
             if points > 0:
                 logger.info(f"Removing {points} old buffer entries")
-                self.data_remove(points)
+                self._scpi_data_remove(points)
 
         except Exception as e:
             logger.warning(f"Failed to clear measurement buffer: {e}")
 
-        self.calculate_average_state("ON")
+        self._scpi_calculate_average_state("ON")
 
         logger.info("Starting measurement")
-        self.initiate()
+        self._scpi_initiate()
 
         start_time = time.time()
 
         while True:
 
             try:
-                points = int(self.data_points())
+                points = int(self._scpip_data_points())
             except Exception:
                 points = 0
 
@@ -511,9 +511,9 @@ class RIGOL_DMM800:
 
             time.sleep(0.1)
 
-        raw = self.read()
+        raw = self._scpi_read()
 
-        self.calculate_average_state("OFF")
+        self._scpi_calculate_average_state("OFF")
 
         if not raw:
             logger.warning("No data received from instrument")
@@ -567,7 +567,7 @@ class RIGOL_DMM800:
         self,
         mode: Literal["V", "A"] = "V",
         range: float = 0,
-        speed: Literal["SLOW", "MID", "FAST"] = "FAST",
+        speed: Literal["SLOW", "MID", "FAST"] = "MID",
     ) -> None:
         """
         Configure the Rigol DMM.
@@ -575,25 +575,17 @@ class RIGOL_DMM800:
         Args:
             mode:   V or A
             range:  Expected maximum measurement value
-            speed:  LOW, MID or HIGH
+            speed:  SLOW, MID or FAST
         """
 
         mode = mode.upper()
         speed = speed.upper()
 
-        speed_map = {
-            "LOW": "SLOW",
-            "MID": "MEDIUM",
-            "HIGH": "FAST",
-        }
-
-        if speed not in speed_map:
+        if speed not in ppm_map:
             raise ValueError(
                 f"Unsupported speed '{speed}'. "
-                "Use LOW, MID or HIGH."
+                "Use SLOW, MID or FAST."
             )
-
-        rigol_speed = speed_map[speed]
 
         if mode == "V":
 
@@ -609,10 +601,10 @@ class RIGOL_DMM800:
 
             resolution = (
                 numeric_range *
-                ppm_map[rigol_speed]
+                ppm_map[speed]
             )
 
-            self.configure_voltage_dc(
+            self._scpi_configure_voltage_dc(
                 range_val,
                 "DEF",
                 f"{resolution:.6E}"
@@ -665,7 +657,7 @@ class RIGOL_DMM800:
             <filename>     Label for the measured signal
         """
 
-        return self.hcopy_sdump_data_dump(
+        return self._scpi_hcopy_sdump_data_dump(
             filename=filename,
             folder="measurment",
             format="PNG",

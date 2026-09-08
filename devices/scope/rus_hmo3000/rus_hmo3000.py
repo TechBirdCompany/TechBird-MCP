@@ -540,17 +540,17 @@ class RUS_HMO3000:
         if label == "":
             self._scpi_channel_label_state(
                 channel=channel,
-                state=False
+                state="OFF"
             )
         else:
             self._scpi_channel_label_state(
                 channel=channel,
-                state=True
+                state="ON"
             )
 
             self._scpi_channel_label(
                 channel=channel,
-                text=label
+                label=label
             )
 
         self._scpi_channel_coupling(
@@ -577,17 +577,17 @@ class RUS_HMO3000:
         )
 
     def set_trigger(
-            self,
-            channel:int,
-            mode:str,
-            level:float,
+        self,
+        channel: int,
+        mode: str,
+        level: float,
     ):
         if mode:
-            self.trigger_mode(
+            self._scpi_trigger_mode(
                 mode=mode
             )
 
-        self.set_trigger_edge(
+        self._scpi_set_trigger_edge(
             channel=channel,
             level=level
         )
@@ -720,7 +720,6 @@ class RUS_HMO3000:
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            self._scpi_stop()
             time.sleep(0.5)
 
             # Increase the VISA timeout for a large binary screenshot transfer.
@@ -754,13 +753,13 @@ class RUS_HMO3000:
             return ""
 
     def persistence_clear(self) -> None:
-        self.persistence_clear()
+        self._scpi_display_persistance_clear()
 
     def get_count(
         self,
         position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
-        self._scpi_get_count(
+        return self._scpi_get_count(
             position=position
         )
 

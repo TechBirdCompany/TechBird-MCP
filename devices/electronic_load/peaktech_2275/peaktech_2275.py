@@ -142,6 +142,7 @@ class PEAKTECH_2275:
             logger.info(f"Sending command: {cmd}")
             self.inst.write(f"{cmd}\r\n".encode())
             self.inst.flush()
+            time.sleep(0.25)
         except Exception as e:
             logger.error(f"Command failed '{cmd}': {e}")
 
@@ -225,10 +226,10 @@ class PEAKTECH_2275:
         
         logger.info("Querying load state")
         
-        state = self.query("LOAD:STATE?")
+        state = self.query("LOAD?")
         
         if state is None:
-            state = self.query("LOAD?")
+            state = self.query("LOAD:STATE?")
         
         return state
 
@@ -252,7 +253,7 @@ class PEAKTECH_2275:
 
         logger.info(f"Setting mode to {mode}")
         
-        self.write(f"LOAD:MODE {mode}")
+        self.write(f"MODE {mode}")
 
     def _scpi_set_current(
         self, 

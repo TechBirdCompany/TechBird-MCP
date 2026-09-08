@@ -210,6 +210,8 @@ def test_load(
 
         scope.reset()   # Reset measurments and display of scope
 
+        scope.run() # Set scope in run mode
+
         scope.set_channel(  # Prepare channel 1 to ripple measurment
             channel=1,
             enable="ON",
@@ -232,6 +234,12 @@ def test_load(
             bandwidth_limit="20MHz",
             volts_per_div=calc_scale(current),
             position=calc_scale(current)*-3,
+        )
+
+        scope.set_trigger(  # Set trigger mode
+            channel=1,
+            mode="",
+            level=0,
         )
 
         scope.set_measurement(  # Set measurment 1 for channel 1 to max
@@ -266,11 +274,11 @@ def test_load(
             duration=-1,
         )
 
-        time.sleep(5)
+        time.sleep(10) # Wait for persistance to build up
+
+        #scope.run() # Set Scope to run mode
 
         scope.persistence_clear() # Clear persistance traces
-
-        scope.run() # Set Scope to run mode
 
         last_count = None
 
@@ -293,6 +301,8 @@ def test_load(
         file = scope.save_screenshot(  # Create screenshot
             filename=f"{domain}@{str(test_current)}A_AC_SCOPE_{timestamp}",
         )
+
+        scope.stop() # Set scope in stop mode
 
         created_files.append(file)
 
