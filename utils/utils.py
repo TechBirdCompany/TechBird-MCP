@@ -56,17 +56,16 @@ def round_125(value: float) -> float:
 def calc_scale(value: float) -> float:
     """Calculate display scale for a measurement value.
     
-    Computes the appropriate scale for displaying a value using 1-2-5
-    rounding algorithm. Typically used for setting voltage/current ranges.
+    Rounds value to nearest "nice" oscilloscope scale (1, 2, 5, 10, etc).
+    Uses 1-2-5 rounding algorithm. Typically used for setting voltage/current ranges.
     
     Args:
         value: Measurement value to scale
         
     Returns:
-        Calculated scale value
+        Calculated scale value (always in pattern: 1, 2, or 5 × 10^n)
     """
-    raw = abs(value) / 4
-    return round_125(raw)
+    return round_125(abs(value))
 
 def get_folder(folder: Optional[str] = None) -> str:
     """Get or create measurements folder path.
