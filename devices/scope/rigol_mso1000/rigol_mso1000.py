@@ -148,7 +148,7 @@ class RIGOL_MSO1000:
         Args:
             <duration>  MIN|0.1|0.2|0.5|1|5|10|INFinite
         """
-        logger.info(f"Set peristence time to {duration}")
+        logger.info(f"Set persistence time to {duration}")
 
         self.write(f":DISPlay:GRADing:TIME {duration}")
 
@@ -163,7 +163,7 @@ class RIGOL_MSO1000:
             <mode>  NORMal|AVERages|PEAK|HRESolution
         """
 
-        logger.inf(f"Set scope to acquire mode {mode}")
+        logger.info(f"Set scope to acquire mode {mode}")
 
         self.write(f":ACQuire:TYPE {mode}")
 
@@ -619,20 +619,20 @@ class RIGOL_MSO1000:
         self
     ) -> str:
         
-        self._scpi_identify()
+        return self._scpi_identify()
 
     def set_resolution(
         self,
         bit: Literal[8, 16] = 16
     ) -> None:
         
-        if bin == 8:
+        if bit == 8:
             self._scpi_acquire_type(
                 mode="NORMal"
             )
         else:
             self._scpi_acquire_type(
-                model="HRESolution"
+                mode="HRESolution"
             )
 
     def set_channel(
@@ -647,7 +647,17 @@ class RIGOL_MSO1000:
         volts_per_div: float = 5,
         position: float = 0
     ) -> None:
-        pass    # no mood to add that....
+        
+        self._scpi_channel_display(channel=channel, state=enable)
+        self._scpi_channel_probe(channel=channel, attenuation=str(attenuation))
+        self._scpi_channel_unit(channel=channel, unit="VOLTage" if unit == "V" else "AMPere")
+        self._scpi_channel_coupling(channel=channel, coupling=coupling)
+        bandwidth = "20M" if bandwidth_limit == "20MHz" else "OFF"
+        self._scpi_channel_bandwidth(channel=channel, bandwidth_limit=bandwidth)
+        self._scpi_channel_scale(channel=channel, volts_per_div=volts_per_div)
+        self._scpi_channel_offset(channel=channel, offset=position)
+        if label:
+            self.set_label(channel=channel, label=label)
 
     def set_trigger(
         self,
@@ -668,7 +678,8 @@ class RIGOL_MSO1000:
         self,
         sec_per_div: float
     ) -> None:
-        pass    # Needs implementation
+        
+        self._scpi_timebase_main_scale(sec_per_div=sec_per_div)
 
     def set_persistence(
         self,
@@ -689,7 +700,9 @@ class RIGOL_MSO1000:
         self
     ) -> None:
 
-        pass    # needs implementation
+        self._scpi_measurement_clear()
+        self._scpi_display_clear()
+        self._scpi_measurement_statistics_reset()
 
     def set_measurement(
         self,
@@ -698,7 +711,20 @@ class RIGOL_MSO1000:
         measurement_type: Literal["OFF", "MIN", "MAX", "PKPK", "RMS"] = "OFF"
     ) -> None:
 
-        pass    # needs implementatin
+        self._scpi_measurement_source(channel=channel)
+        
+        if measurement_type == "OFF":
+            return
+        
+        measurement_map = {
+            "MIN": "VMIN",
+            "MAX": "VMAX",
+            "PKPK": "VPP",
+            "RMS": "VRMS"
+        }
+        
+        if measurement_type in measurement_map:
+            self._scpi_measurement_item(channel=channel, measurement_type=measurement_map[measurement_type])
 
     def save_screenshot(
         self,
@@ -835,7 +861,13 @@ class RIGOL_MSO1000:
         self,
         position: Literal[1, 2, 3, 4, 5, 6] = 1
     ) -> int:
-        pass    # Keine Ahnung wie das geht
+        
+        try:
+            result = self.query(":ACQuire:COUNt?")
+            return int(float(result))
+        except Exception as exc:
+            logger.warning(f"Failed to get acquisition count: {exc}")
+            return 0
 
     def persistence_clear(self) -> None:
         
@@ -857,3 +889,13 @@ class RIGOL_MSO1000:
             label=label
         )
 
+    def clear_measurements(
+        self
+    ) -> None:
+        """
+        Clears all measurements.
+        """
+
+        logger.debug(f"Clearing all measurements")
+
+        self._scpi_measurement_clear()
