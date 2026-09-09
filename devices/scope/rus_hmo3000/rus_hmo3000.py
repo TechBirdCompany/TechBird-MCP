@@ -698,6 +698,8 @@ class RUS_HMO3000:
             parameter = "UPEakvalue"
         if measurement_type == "PKPK":
             parameter = "PEAK"
+        if measurement_type == "RMS":
+            parameter = "RMS"
 
         self._scpi_measure_item(
             position=position,
