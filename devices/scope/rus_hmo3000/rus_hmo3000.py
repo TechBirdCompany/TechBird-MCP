@@ -147,12 +147,16 @@ class RUS_HMO3000:
         
         Args:
             <channel>   1|2|3|4
-            <scale>     1E-3 to 10 V/div
+            <scale>     10E-3 to 50 V/div
         '''
 
-        if not (1e-3 <= scale <= 10):
-            logger.warning(f"Scale out of limits")
-            return
+        if (scale < 10e-3):
+            scale = 10e-3
+            logger.warning(f"Scale too low, setting to 10mV/div")
+
+        if (scale > 50):
+            scale = 50
+            logger.warning(f"Scale too high, setting to 50V/div")
 
         logger.info(f"Set channel {channel} to {scale} V/div")
 
@@ -173,9 +177,13 @@ class RUS_HMO3000:
             <position>  -5 to 5
         '''
 
-        if not (-5 <= position <= 5):
-            logger.warning(f"Scale out of limits")
-            return
+        if (position < -5):
+            position = -5
+            logger.warning(f"Position too low, setting to -5")
+
+        if (position > 5):
+            position = 5
+            logger.warning(f"Position too high, setting to 5")
 
         divisions = position/self._channel_scales.get(channel)
 
@@ -690,10 +698,12 @@ class RUS_HMO3000:
             parameter = "UPEakvalue"
         if measurement_type == "PKPK":
             parameter = "PEAK"
+        if measurement_type == "RMS":
+            parameter = "RMS"
 
         self._scpi_measure_item(
             position=position,
-            parameter=measurement_type
+            parameter=parameter
         )
 
     def save_screenshot(
