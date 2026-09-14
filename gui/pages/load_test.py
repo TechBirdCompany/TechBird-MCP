@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
     "advanced_dc_sec_per_div": 1e-3,
     "advanced_ac_sec_per_div": 0.1e-3,
     "advanced_ac_volts_per_div": 0.05,
+    "use_current_probe": True,
 }
 
 def load_page_config():
@@ -110,13 +111,12 @@ def build_load_test_page():
             "samples": int(samples.value),
             "single": bool(single.value),
             "current_probe_attenuation": float(current_probe_attenuation.value),
-            "dc_sec_per_div": float(dc_sec_per_div.value),
-            "ac_sec_per_div": float(ac_sec_per_div.value),
             "ac_voltage_percentage": float(page_cfg.get("ac_voltage_percentage", 0.075)),
             "advanced": bool(advanced.value),
             "advanced_dc_sec_per_div": float(advanced_dc_sec_per_div.value),
             "advanced_ac_sec_per_div": float(advanced_ac_sec_per_div.value),
             "advanced_ac_volts_per_div": float(advanced_ac_volts_per_div.value),
+            "use_current_probe": bool(use_current_probe.value),
         }
 
     def persist():
@@ -241,13 +241,14 @@ def build_load_test_page():
                 samples=int(samples.value),
                 single=single.value,
                 current_probe_attenuation=float(current_probe_attenuation.value),
-                dc_sec_per_div=float(dc_sec_per_div.value),
-                ac_sec_per_div=float(ac_sec_per_div.value),
+                dc_sec_per_div=float(page_cfg.get("dc_sec_per_div", 1e-3)),
+                ac_sec_per_div=float(page_cfg.get("ac_sec_per_div", 0.1e-3)),
                 ac_voltage_percentage=float(page_cfg.get("ac_voltage_percentage", 0.075)),
                 advanced=bool(advanced.value),
                 advanced_dc_sec_per_div=float(advanced_dc_sec_per_div.value),
                 advanced_ac_sec_per_div=float(advanced_ac_sec_per_div.value),
                 advanced_ac_volts_per_div=float(advanced_ac_volts_per_div.value),
+                use_current_probe=bool(use_current_probe.value),
             )
 
             logger.info("Load Test completed")
@@ -320,6 +321,12 @@ def build_load_test_page():
                 .on("change", lambda e: persist())
             )
 
+            use_current_probe = ui.checkbox(
+                "Use Current Probe",
+                value=page_cfg["use_current_probe"],
+                on_change=lambda e: persist(),
+            )
+
             current_probe_attenuation = (
                 ui.number(
                     "Current Probe Attenuation",
@@ -329,24 +336,9 @@ def build_load_test_page():
                 .on("change", lambda e: persist())
             )
 
-            dc_sec_per_div = (
-                ui.number(
-                    "DC Timebase [s/div]",
-                    value=page_cfg["dc_sec_per_div"],
-                    format="%g",
-                )
-                .classes("w-full")
-                .on("change", lambda e: persist())
-            )
-
-            ac_sec_per_div = (
-                ui.number(
-                    "AC Timebase [s/div]",
-                    value=page_cfg["ac_sec_per_div"],
-                    format="%g",
-                )
-                .classes("w-full")
-                .on("change", lambda e: persist())
+            current_probe_attenuation.bind_visibility_from(
+                use_current_probe,
+                "value"
             )
 
             single = ui.checkbox(

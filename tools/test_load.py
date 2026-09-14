@@ -27,6 +27,7 @@ def test_load(
     advanced_dc_sec_per_div: float = 1e-3,
     advanced_ac_sec_per_div: float = 0.1e-3,
     advanced_ac_volts_per_div: float = 0.05,
+    use_current_probe: bool = True,
 ) -> str:
     """
     Measures the domain in idle and with mid and high load
@@ -69,6 +70,8 @@ def test_load(
         <advanced_ac_sec_per_div>       Timebase of the AC measurment in advanced mode
 
         <advanced_ac_volts_per_div>     Volts per division of the AC measurment in advanced mode
+
+        <use_current_probe>             Whether to enable current probe measurement on channel 2
     """
 
     created_files = []
@@ -151,17 +154,23 @@ def test_load(
             position=calc_scale(voltage)*-2,
         )
 
-        scope.set_channel(  # Set channel 2 of scope
-            channel=2,
-            enable="ON",
-            attenuation=current_probe_attenuation,
-            unit="A",
-            label=f"{domain}@{test_current}A",
-            coupling="DC",
-            bandwidth_limit="20MHz",
-            volts_per_div=calc_scale(current),
-            position=calc_scale(current)*-3,
-        )
+        if use_current_probe:
+            scope.set_channel(  # Set channel 2 of scope
+                channel=2,
+                enable="ON",
+                attenuation=current_probe_attenuation,
+                unit="A",
+                label=f"{domain}@{test_current}A",
+                coupling="DC",
+                bandwidth_limit="20MHz",
+                volts_per_div=calc_scale(current),
+                position=calc_scale(current)*-3,
+            )
+        else:
+            scope.set_channel(  # Disable channel 2
+                channel=2,
+                enable="OFF",
+            )
 
         scope.set_trigger(  # Set trigger mode
             channel=1,
@@ -191,11 +200,12 @@ def test_load(
             measurement_type="RMS",
         )
 
-        scope.set_measurement(  # Set measurment 4 for channel 2 to RMS
-            position=4,
-            channel=2,
-            measurement_type="RMS",
-        )
+        if use_current_probe:
+            scope.set_measurement(  # Set measurment 4 for channel 2 to RMS
+                position=4,
+                channel=2,
+                measurement_type="RMS",
+            )
 
         eload.set_current(test_current)  # Set eload to current
 
@@ -259,17 +269,23 @@ def test_load(
             position=0,
         )
 
-        scope.set_channel(  # Set channel 2 of scope
-            channel=2,
-            enable="ON",
-            attenuation=current_probe_attenuation,
-            unit="A",
-            label=f"{domain} @ {test_current}A",
-            coupling="DC",
-            bandwidth_limit="20MHz",
-            volts_per_div=calc_scale(current),
-            position=calc_scale(current)*-3,
-        )
+        if use_current_probe:
+            scope.set_channel(  # Set channel 2 of scope
+                channel=2,
+                enable="ON",
+                attenuation=current_probe_attenuation,
+                unit="A",
+                label=f"{domain} @ {test_current}A",
+                coupling="DC",
+                bandwidth_limit="20MHz",
+                volts_per_div=calc_scale(current),
+                position=calc_scale(current)*-3,
+            )
+        else:
+            scope.set_channel(  # Disable channel 2
+                channel=2,
+                enable="OFF",
+            )
 
         scope.set_measurement(  # Set measurment 1 for channel 1 to max
             position=1,
@@ -289,11 +305,12 @@ def test_load(
             measurement_type="PKPK",
         )
 
-        scope.set_measurement(  # Set measurment 4 for channel 2 to RMS
-            position=4,
-            channel=2,
-            measurement_type="RMS",
-        )
+        if use_current_probe:
+            scope.set_measurement(  # Set measurment 4 for channel 2 to RMS
+                position=4,
+                channel=2,
+                measurement_type="RMS",
+            )
 
         scope.set_timebase( # Set timebase
             sec_per_div=use_ac_sec_per_div,
