@@ -12,13 +12,12 @@ This programm will provide hardware specific commands mapped to univified API co
 - Written by not a professional
 - Errors are free to find and free to fix
 - Some stuff works some doesn't
-
+- Created in part with the help of AI coding tools, including GitHub Copilot and Microsoft Copilot
 
 # License
 ---
 This project is licensed under the MIT License.
 See the LICENSE file for details.
-
 
 # Third Party Components
 ---

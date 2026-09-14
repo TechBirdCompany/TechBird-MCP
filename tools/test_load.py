@@ -19,7 +19,14 @@ def test_load(
     current: float,
     samples: int = 200,
     single: bool = False,
-    current_probe_attenuation: float = 10
+    current_probe_attenuation: float = 10,
+    dc_sec_per_div: float = 1e-3,
+    ac_sec_per_div: float = 0.1e-3,
+    ac_voltage_percentage: float = 0.075,
+    advanced: bool = False,
+    advanced_dc_sec_per_div: float = 1e-3,
+    advanced_ac_sec_per_div: float = 0.1e-3,
+    advanced_ac_volts_per_div: float = 0.05,
 ) -> str:
     """
     Measures the domain in idle and with mid and high load
@@ -47,6 +54,21 @@ def test_load(
         <single>                        Single measurment or with idle, half and full current
 
         <current_probe_attenuation>     Attenuation of the current probe
+
+        <dc_sec_per_div>                Timebase of the DC measurment
+
+        <ac_sec_per_div>                Timebase of the AC measurment
+
+        <ac_voltage_percentage>         Percentage factor of voltage used to derive AC scale in normal test
+
+        <advanced>                      Advanced measurment with custom scope settings,
+                                        always executed as single measurment
+
+        <advanced_dc_sec_per_div>       Timebase of the DC measurment in advanced mode
+
+        <advanced_ac_sec_per_div>       Timebase of the AC measurment in advanced mode
+
+        <advanced_ac_volts_per_div>     Volts per division of the AC measurment in advanced mode
     """
 
     created_files = []
@@ -55,8 +77,20 @@ def test_load(
         "%Y%m%d_%H%M%S"
     )
 
+    if advanced:   # Advanced measurments are always single measurments
+        single = True
+        file_tag = "ADVANCED_"
+        use_dc_sec_per_div = advanced_dc_sec_per_div
+        use_ac_sec_per_div = advanced_ac_sec_per_div
+        ac_scale = advanced_ac_volts_per_div
+    else:
+        file_tag = ""
+        use_dc_sec_per_div = dc_sec_per_div
+        use_ac_sec_per_div = ac_sec_per_div
+        ac_scale = calc_scale(voltage * ac_voltage_percentage)
+
     logger.info(
-        f"Starting load test: "
+        f"Starting {'advanced ' if advanced else ''}load test: "
         f"{voltage}V @ {current}A"
     )
 
@@ -136,7 +170,7 @@ def test_load(
         )
 
         scope.set_timebase( # Set Timebase
-            sec_per_div=1e-3,
+            sec_per_div=use_dc_sec_per_div,
         )
 
         scope.set_measurement(  # Set measurment 1 for channel 1 to max
@@ -190,7 +224,7 @@ def test_load(
         scope.stop() # Set scope in stop mode
 
         file = scope.save_screenshot(  # Get screenshot of scope
-            filename=f"{domain}@{str(test_current)}A_DC_SCOPE_{timestamp}",
+            filename=f"{domain}@{str(test_current)}A_{file_tag}DC_SCOPE_{timestamp}",
         )
 
         created_files.append(file)
@@ -198,7 +232,7 @@ def test_load(
         file = dmm.get_plot(
             title=f"{domain} DC Output @ {test_current}A",
             y_label=domain,
-            filename=f"{domain}@{str(test_current)}A_DC_DMM_{timestamp}",
+            filename=f"{domain}@{str(test_current)}A_{file_tag}DC_DMM_{timestamp}",
             nominal_value=voltage,
             min_limit=min_voltage,
             max_limit=max_voltage,
@@ -221,7 +255,7 @@ def test_load(
             label=f"{domain} @ {test_current}A",
             coupling="AC",
             bandwidth_limit="20MHz",
-            volts_per_div=calc_scale(voltage*0.075),
+            volts_per_div=ac_scale,
             position=0,
         )
 
@@ -262,7 +296,7 @@ def test_load(
         )
 
         scope.set_timebase( # Set timebase
-            sec_per_div=0.1e-3,
+            sec_per_div=use_ac_sec_per_div,
         )
 
         scope.set_persistence(  # Set peristance mode
@@ -294,7 +328,7 @@ def test_load(
             time.sleep(0.1)
 
         file = scope.save_screenshot(  # Create screenshot
-            filename=f"{domain}@{str(test_current)}A_AC_SCOPE_{timestamp}",
+            filename=f"{domain}@{str(test_current)}A_{file_tag}AC_SCOPE_{timestamp}",
         )
 
         created_files.append(file)

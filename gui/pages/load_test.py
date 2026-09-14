@@ -27,7 +27,14 @@ DEFAULT_CONFIG = {
     "current": 0.5,
     "samples": 200,
     "single": False,
-    "current_probe_attenuation": 10
+    "current_probe_attenuation": 10.0,
+    "dc_sec_per_div": 1e-3,
+    "ac_sec_per_div": 0.1e-3,
+    "ac_voltage_percentage": 0.075,
+    "advanced": False,
+    "advanced_dc_sec_per_div": 1e-3,
+    "advanced_ac_sec_per_div": 0.1e-3,
+    "advanced_ac_volts_per_div": 0.05,
 }
 
 def load_page_config():
@@ -41,6 +48,28 @@ def load_page_config():
 
         result = DEFAULT_CONFIG.copy()
         result.update(cfg)
+
+        if "ac_volts_per_div" in cfg and "advanced_ac_volts_per_div" not in cfg:
+            result["advanced_ac_volts_per_div"] = cfg["ac_volts_per_div"]
+
+        for key in [
+            "voltage",
+            "min_voltage",
+            "max_voltage",
+            "current",
+            "current_probe_attenuation",
+            "dc_sec_per_div",
+            "ac_sec_per_div",
+            "ac_voltage_percentage",
+            "advanced_dc_sec_per_div",
+            "advanced_ac_sec_per_div",
+            "advanced_ac_volts_per_div",
+        ]:
+            if key in result and result[key] is not None:
+                result[key] = float(result[key])
+
+        if "samples" in result and result["samples"] is not None:
+            result["samples"] = int(result["samples"])
 
         return result
 
@@ -80,7 +109,14 @@ def build_load_test_page():
             "current": float(current.value),
             "samples": int(samples.value),
             "single": bool(single.value),
-            "current_probe_attenuation": float(current_probe_attenuation.value)
+            "current_probe_attenuation": float(current_probe_attenuation.value),
+            "dc_sec_per_div": float(dc_sec_per_div.value),
+            "ac_sec_per_div": float(ac_sec_per_div.value),
+            "ac_voltage_percentage": float(page_cfg.get("ac_voltage_percentage", 0.075)),
+            "advanced": bool(advanced.value),
+            "advanced_dc_sec_per_div": float(advanced_dc_sec_per_div.value),
+            "advanced_ac_sec_per_div": float(advanced_ac_sec_per_div.value),
+            "advanced_ac_volts_per_div": float(advanced_ac_volts_per_div.value),
         }
 
     def persist():
@@ -88,6 +124,12 @@ def build_load_test_page():
             save_page_config(get_current_values())
         except Exception as e:
             logger.exception(e)
+
+    def on_advanced_change():
+
+        single.value = advanced.value   # Advanced measurments are always single measurments
+
+        persist()
 
     def open_preview(image_path):
 
@@ -198,7 +240,14 @@ def build_load_test_page():
                 current=float(current.value),
                 samples=int(samples.value),
                 single=single.value,
-                current_probe_attenuation=float(current_probe_attenuation.value)
+                current_probe_attenuation=float(current_probe_attenuation.value),
+                dc_sec_per_div=float(dc_sec_per_div.value),
+                ac_sec_per_div=float(ac_sec_per_div.value),
+                ac_voltage_percentage=float(page_cfg.get("ac_voltage_percentage", 0.075)),
+                advanced=bool(advanced.value),
+                advanced_dc_sec_per_div=float(advanced_dc_sec_per_div.value),
+                advanced_ac_sec_per_div=float(advanced_ac_sec_per_div.value),
+                advanced_ac_volts_per_div=float(advanced_ac_volts_per_div.value),
             )
 
             logger.info("Load Test completed")
@@ -280,13 +329,80 @@ def build_load_test_page():
                 .on("change", lambda e: persist())
             )
 
-            single = (
-                ui.checkbox(
-                    "Single Measurement",
-                    value=page_cfg["single"]
+            dc_sec_per_div = (
+                ui.number(
+                    "DC Timebase [s/div]",
+                    value=page_cfg["dc_sec_per_div"],
+                    format="%g",
                 )
+                .classes("w-full")
                 .on("change", lambda e: persist())
             )
+
+            ac_sec_per_div = (
+                ui.number(
+                    "AC Timebase [s/div]",
+                    value=page_cfg["ac_sec_per_div"],
+                    format="%g",
+                )
+                .classes("w-full")
+                .on("change", lambda e: persist())
+            )
+
+            single = ui.checkbox(
+                "Single Measurement",
+                value=page_cfg["single"],
+                on_change=lambda e: persist(),
+            )
+
+            advanced = ui.checkbox(
+                "Advanced",
+                value=page_cfg["advanced"],
+                on_change=lambda e: on_advanced_change(),
+            )
+
+            single.bind_enabled_from(  # Advanced measurments are always single measurments
+                advanced,
+                "value",
+                backward=lambda value: not value,
+            )
+
+            if advanced.value:
+                single.value = True
+
+            with ui.column().classes("w-full").bind_visibility_from(
+                advanced, "value"
+            ):
+
+                advanced_dc_sec_per_div = (
+                    ui.number(
+                        "Advanced DC Timebase [s/div]",
+                        value=page_cfg.get("advanced_dc_sec_per_div", page_cfg["dc_sec_per_div"]),
+                        format="%g",
+                    )
+                    .classes("w-full")
+                    .on("change", lambda e: persist())
+                )
+
+                advanced_ac_sec_per_div = (
+                    ui.number(
+                        "Advanced AC Timebase [s/div]",
+                        value=page_cfg.get("advanced_ac_sec_per_div", page_cfg["ac_sec_per_div"]),
+                        format="%g",
+                    )
+                    .classes("w-full")
+                    .on("change", lambda e: persist())
+                )
+
+                advanced_ac_volts_per_div = (
+                    ui.number(
+                        "Advanced AC Volts per Division [V/div]",
+                        value=page_cfg.get("advanced_ac_volts_per_div", page_cfg.get("ac_volts_per_div", 0.05)),
+                        format="%g",
+                    )
+                    .classes("w-full")
+                    .on("change", lambda e: persist())
+                )
 
             ui.button(
                 text = "Start Load Test",
